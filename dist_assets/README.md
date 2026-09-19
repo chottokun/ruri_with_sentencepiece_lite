@@ -35,7 +35,7 @@ tags:
 
 ```bash
 # Wheel の直接インストールと ONNX Runtime の導入
-pip install https://huggingface.co/chottokun/ruri-v3-30m-lite/resolve/main/wheels/sentencepiece_lite-0.1.0-cp311-cp311-linux_x86_64.whl onnxruntime numpy huggingface_hub
+pip install https://huggingface.co/Chottokun/ruri-v3-30m-lite/resolve/main/wheels/sentencepiece_lite-0.1.0-cp311-cp311-linux_x86_64.whl onnxruntime numpy huggingface_hub
 
 # GPU を使用する場合
 pip install onnxruntime-gpu
@@ -52,7 +52,7 @@ from ruri_v3_lite import RuriV3Lite
 import numpy as np
 
 # インスタンス化 (Hugging Face Hub からモデルとトークナイザーを自動キャッシュ)
-model = RuriV3Lite(repo_id="chottokun/ruri-v3-30m-lite")
+model = RuriV3Lite(repo_id="Chottokun/ruri-v3-30m-lite")
 
 # ruri-v3 推奨のプレフィックス付きテキスト
 queries = ["検索クエリ: 日本の首都はどこですか？"]

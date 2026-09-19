@@ -40,7 +40,7 @@ class RuriV3Lite:
 
     def __init__(
         self,
-        repo_id: str = "chottokun/ruri-v3-30m-lite",
+        repo_id: str = "Chottokun/ruri-v3-30m-lite",
         model_dir: str = None,
         force_fp32: bool = False
     ):
