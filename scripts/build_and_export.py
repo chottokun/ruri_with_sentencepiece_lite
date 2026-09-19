@@ -148,10 +148,14 @@ def export_model(model_key: str, spm_to_fb_bin: str, wheel_path: str):
     print(f"[{model_key}] 4/4: ラッパーおよび README の配置")
     shutil.copyfile("dist_assets/ruri_v3_lite.py", os.path.join(out_dir, "ruri_v3_lite.py"))
 
+    # LICENSE ファイルの配置
+    shutil.copyfile("LICENSE", os.path.join(out_dir, "LICENSE"))
+
     readme_content = f"""---
 license: apache-2.0
 language:
 - ja
+base_model: {repo_id}
 pipeline_tag: feature-extraction
 tags:
 - sentence-similarity
@@ -192,6 +196,36 @@ d_emb = model.encode(documents)
 similarities = np.dot(q_emb, d_emb.T)[0]
 print(f"クエリ vs 東京: {{similarities[0]:.4f}}")
 print(f"クエリ vs 大阪: {{similarities[1]:.4f}}")
+```
+
+---
+
+## ⚖️ ライセンス・クレジット・引用 (License & Attribution)
+
+本リポジトリおよび変換済み配布モデルは **Apache License 2.0** の下で公開されています。
+
+### 原著作者情報 (Base Model Credits)
+- **Base Model**: [{repo_id}](https://huggingface.co/{repo_id})
+- **開発元**: 名古屋大学 自然言語処理研究室 (Nagoya University, cl-nagoya)
+- **原著作者**: 塚越 隼人 (Hayato Tsukagoshi), 笹野 遼平 (Ryohei Sasano)
+- **ライセンス**: Apache License 2.0
+
+### 改変内容 (Modifications)
+- 公式 Safetensors 重みを ONNX (FP32) および ONNX (FP16) 形式へ変換
+- 公式 SentencePiece 辞書を SentencePiece Lite 用 FlatBuffers バイナリ (`.spm.fb`) に変換
+- PyTorch 非依存・超軽量推論ラッパー (`ruri_v3_lite.py`) の同梱
+
+### 引用 (Citation)
+```bibtex
+@misc{{Ruri,
+  title={{Ruri: Japanese General Text Embeddings}}, 
+  author={{Hayato Tsukagoshi and Ryohei Sasano}},
+  year={{2024}},
+  eprint={{2409.07737}},
+  archivePrefix={{arXiv}},
+  primaryClass={{cs.CL}},
+  url={{https://arxiv.org/abs/2409.07737}}, 
+}}
 ```
 """
     with open(os.path.join(out_dir, "README.md"), "w", encoding="utf-8") as f:

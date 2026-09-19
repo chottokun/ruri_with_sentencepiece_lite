@@ -160,3 +160,40 @@ uv run python scripts/deploy_to_hf.py --model 130m
 ## 🔒 Security & Secret Hygiene
 - Hugging Face write tokens (`HF_TOKEN`) and credentials are never hardcoded and must be provided via environment variables or `.env`.
 - Large model binaries (`*.onnx`, `*.onnx.data`, `*.spm.fb`, `*.whl`) and local caches are strictly ignored by `.gitignore`.
+
+---
+
+## ⚖️ License & Attribution
+
+This repository and its derivative assets are provided under the **Apache License 2.0** (see [LICENSE](LICENSE) for details).
+
+### 1. Base Model Credits
+- **Model**: [`cl-nagoya/ruri-v3`](https://huggingface.co/collections/cl-nagoya/ruri-v3-67c006886e0621255e7fcb99) (`30m`, `70m`, `130m`, `310m`)
+- **Developer**: Nagoya University Natural Language Processing Laboratory (cl-nagoya)
+- **Original Authors**: Hayato Tsukagoshi, Ryohei Sasano
+- **License**: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- **Modifications**:
+  - Converted and exported official Safetensors weights to ONNX (FP32) and ONNX (FP16) formats.
+  - Converted official SentencePiece models into FlatBuffers binaries (`.spm.fb`) for zero-copy memory mapping.
+  - Authored a self-contained, PyTorch-free inference wrapper (`ruri_v3_lite.py`).
+
+### 2. Tokenizer Core
+- **Library**: [SentencePiece (Lite)](https://github.com/google/sentencepiece/tree/master/src/builtin_pb)
+- **Developer**: Google LLC
+- **License**: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+### 3. Citation
+When using or evaluating Ruri-v3 or these derivative models, please cite the original paper:
+
+```bibtex
+@misc{Ruri,
+  title={{Ruri: Japanese General Text Embeddings}}, 
+  author={Hayato Tsukagoshi and Ryohei Sasano},
+  year={2024},
+  eprint={2409.07737},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL},
+  url={https://arxiv.org/abs/2409.07737}, 
+}
+```
+

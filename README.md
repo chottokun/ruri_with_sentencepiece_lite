@@ -160,3 +160,40 @@ uv run python scripts/deploy_to_hf.py --model 130m
 ## 🔒 セキュリティと機微情報保護方針
 - Hugging Face の書き込みトークン（`HF_TOKEN`）を含む一切の秘密情報はコード内に記述せず、環境変数経由でのみ受け取ります。
 - 巨大なモデルバイナリ（`*.onnx`, `*.onnx.data`, `*.spm.fb`, `*.whl`）やキャッシュディレクトリは `.gitignore` により Git 追跡から完全に除外されています。
+
+---
+
+## ⚖️ ライセンス・帰属表示・引用 (License & Attribution)
+
+本リポジトリのコードおよび派生成果物は、**Apache License 2.0** の下で提供されています（詳細は [LICENSE](LICENSE) を参照）。
+
+### 1. ベースモデル (Base Model)
+- **モデル**: [`cl-nagoya/ruri-v3`](https://huggingface.co/collections/cl-nagoya/ruri-v3-67c006886e0621255e7fcb99) (`30m`, `70m`, `130m`, `310m`)
+- **開発元**: 名古屋大学 自然言語処理研究室 (Nagoya University, cl-nagoya)
+- **原著作者**: 塚越 隼人 (Hayato Tsukagoshi), 笹野 遼平 (Ryohei Sasano)
+- **ライセンス**: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- **改変内容**:
+  - 公式 Safetensors 重みから ONNX (FP32) および ONNX (FP16) 形式への変換・エクスポート
+  - 公式 SentencePiece 辞書を SentencePiece Lite 用 FlatBuffers バイナリ (`.spm.fb`) に変換
+  - PyTorch / Transformers を一切使用しない高速推論ラッパー (`ruri_v3_lite.py`) の新規実装
+
+### 2. トークナイザーコア (Tokenizer)
+- **ライブラリ**: [SentencePiece (Lite)](https://github.com/google/sentencepiece/tree/master/src/builtin_pb)
+- **開発元**: Google LLC
+- **ライセンス**: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+### 3. 原著論文の引用 (Citation)
+Ruri-v3 または本派生成果物をご利用の際は、以下の原著論文の引用をお願いいたします：
+
+```bibtex
+@misc{Ruri,
+  title={{Ruri: Japanese General Text Embeddings}}, 
+  author={Hayato Tsukagoshi and Ryohei Sasano},
+  year={2024},
+  eprint={2409.07737},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL},
+  url={https://arxiv.org/abs/2409.07737}, 
+}
+```
+
