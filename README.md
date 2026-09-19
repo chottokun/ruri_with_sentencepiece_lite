@@ -136,9 +136,21 @@ uv run python scripts/test_inference.py
 > PyTorch 公式モデル出力と本実装の出力を直接照合し、コサイン類似度 **0.9999以上（実測 1.00000000）** を検証します。
 
 ### 5. Hugging Face へのデプロイ (Phase 3)
+
+設定用テンプレートから `.env` を作成します（`.gitignore` により Git 管理からは自動除外されます）：
 ```bash
-export HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxx" # Write 権限付きトークン
-uv run python scripts/deploy_to_hf.py
+cp .env.example .env
+# .env を編集して HF_TOKEN="hf_xxx", 任意で HF_USERNAME="xxx" を設定
+```
+
+指定モデルまたは全モデルをアップロードします：
+```bash
+# 70m をデプロイする場合
+uv run python scripts/deploy_to_hf.py --model 70m
+
+# または環境変数を直接渡してデプロイ
+export HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxx"
+uv run python scripts/deploy_to_hf.py --model 130m
 ```
 
 ---

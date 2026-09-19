@@ -62,7 +62,22 @@ def deploy_model(model_key: str, api: HfApi, username: str):
     print(f"URL: https://huggingface.co/{repo_id}")
     return True
 
+def load_env_file():
+    """ローカルの .env ファイルが存在する場合に環境変数を読み込む (サードパーティ非依存)"""
+    env_path = os.path.abspath("./.env")
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k, v = k.strip(), v.strip().strip("'\"")
+                    if k and v and k not in os.environ:
+                        os.environ[k] = v
+
 def main():
+    load_env_file()
+
     parser = argparse.ArgumentParser(description="Hugging Face デプロイスクリプト")
     parser.add_argument("--model", choices=["30m", "70m", "130m", "310m"], default="70m", help="デプロイ対象モデル")
     args = parser.parse_args()
@@ -70,11 +85,18 @@ def main():
     hf_token = os.environ.get("HF_TOKEN") or get_token()
     if not hf_token:
         print("エラー: 有効な Hugging Face トークンが見つかりません。")
+        print("設定方法:")
+        print("  1. .env ファイルに `HF_TOKEN=hf_xxx` を記述")
+        print("  2. または環境変数 `export HF_TOKEN=hf_xxx` を設定")
         sys.exit(1)
 
     api = HfApi(token=hf_token)
-    user_info = api.whoami()
-    username = user_info["name"]
+    
+    # ユーザー名: HF_USERNAME 環境変数があれば最優先、なければトークンから自動取得
+    username = os.environ.get("HF_USERNAME")
+    if not username:
+        user_info = api.whoami()
+        username = user_info["name"]
 
     deploy_model(args.model, api, username)
 
