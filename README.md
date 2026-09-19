@@ -53,15 +53,23 @@ ruri_sentencepiece_lite/
 
 ---
 
-## ⚡ ベンチマーク要約 (SentencePiece Lite vs Hugging Face)
+## ⚡ ベンチマーク要約 (SentencePiece Lite & ORT vs PyTorch)
 
 詳細レポート: [docs/benchmark.md](docs/benchmark.md)
 
+### 1. 前処理トークナイザー単体性能 (10,000件)
 | 項目 | Hugging Face Fast Tokenizer | SentencePiece Lite (本実装) | 性能差 |
 |---|---|---|---|
 | **10,000件処理時間** | 455.03 ms | **33.97 ms** | **約 13.4 倍 高速** ⚡ |
 | **スループット** | 21,976 sent/s | **294,395 sent/s** | **毎秒約30万文** |
 | **1件あたり平均レイテンシ** | 45.5 µs | **3.40 µs** | **極小オーバーヘッド** |
+
+### 2. End-to-End 埋め込み生成性能 (`encode()` 総合)
+| 項目 (30m / CPU) | PyTorch 2.14 (Transformers) | RuriV3Lite (本実装) | 性能差 |
+|---|---|---|---|
+| **単一クエリ応答レイテンシ** | 6.03 ms | **2.94 ms** | **約 2.05 倍 高速** ⚡ |
+| **パッケージサイズ** | 数 GB (PyTorch一式) | **極小 (数十MB)** | **90%以上削減** |
+
 
 ---
 

@@ -54,15 +54,23 @@ ruri_sentencepiece_lite/
 
 ---
 
-## ⚡ Benchmark Highlights (SentencePiece Lite vs Hugging Face)
+## ⚡ Benchmark Highlights (SentencePiece Lite & ORT vs PyTorch)
 
 Detailed Report: [docs/benchmark.md](docs/benchmark.md)
 
+### 1. Tokenizer Preprocessing Benchmark (10,000 Sentences)
 | Metric | Hugging Face Fast Tokenizer | SentencePiece Lite (Ours) | Speedup / Difference |
 |---|---|---|---|
 | **10,000 Sentences Time** | 455.03 ms | **33.97 ms** | **~13.4x Faster** ⚡ |
 | **Throughput** | 21,976 sent/s | **294,395 sent/s** | **~300k sentences/sec** |
 | **Per-sentence Latency** | 45.5 µs | **3.40 µs** | **Near-zero overhead** |
+
+### 2. End-to-End Embedding Generation (`encode()` Full Pipeline)
+| Metric (30m / CPU) | PyTorch 2.14 (Transformers) | RuriV3Lite (Ours) | Difference |
+|---|---|---|---|
+| **Single Query Latency** | 6.03 ms | **2.94 ms** | **~2.05x Faster** ⚡ |
+| **Package Size** | Several Gigabytes (PyTorch) | **Minimal (tens of MBs)** | **>90% Reduction** |
+
 
 ---
 

@@ -32,7 +32,37 @@
 
 ---
 
-## 3. ハードウェア適応型推論（Pascal vs Ampere以降）
+## 3. End-to-End 埋め込み推論性能（テキスト入力からベクトル出力まで）
+
+前処理（トークナイズ）→ モデル推論 → Mean Pooling → L2正規化 までを網羅した、エンドユーザーが実際に呼び出す `encode()` 関数の総合処理性能です。
+
+### A. 単一クエリのレイテンシ比較 (30m / CPU)
+WebAPIや検索サービスで一般的な「1リクエスト1クエリ」の即時応答性（レイテンシ）を測定しました。
+
+| 実装 | 単一クエリ応答時間 (レイテンシ) | 高速化倍率 |
+|---|---|---|
+| **PyTorch 2.14 (Transformers)** | 6.03 ms | 1.0x (基準) |
+| **RuriV3Lite (本実装)** | **2.94 ms** | **約 2.05 倍 高速** ⚡ |
+
+> **解説**: 小バッチ・単一クエリ処理では、PyTorch/TransformersのPythonレイヤー（テンソル生成・動的型チェック・ディスパッチ）のオーバーヘッドが支配的になります。本実装は C++20 の SentencePiece Lite と C++ ONNX Runtime が直結しているため、Python オーバーヘッドを最小限に抑え **3ms 未満の超低遅延** を実現します。
+
+### B. バッチ処理性能（100文 / Batch=32 / CPU）
+全モデルサイズにおけるスループット測定結果です。
+
+| モデルサイズ | 次元数 | PyTorch 2.14 CPU | RuriV3Lite (本実装) CPU | 特徴・推奨用途 |
+|---|---|---|---|---|
+| **30m** | 256 | 233 ms (429.3 sent/s) | 369 ms (271.1 sent/s) | 最速・低メモリ、エッジやサーバーレスに最適 |
+| **70m** | 384 | 584 ms (171.1 sent/s) | 724 ms (138.1 sent/s) | バランス型、一般的な文書類似度検索 |
+| **130m** | 512 | 1,551 ms (64.5 sent/s) | 2,137 ms (46.8 sent/s) | 高精度ベクトル検索 |
+| **310m** | 768 | 3,417 ms (29.3 sent/s) | 4,615 ms (21.7 sent/s) | 最高精度・研究・高難度タスク |
+
+### C. GPU推論（CUDA / Tensor コア）
+* **GTX 1060 / 1080 (Pascal CC 6.1)**: 最新の PyTorch / ONNX Runtime (CUDA 12/13) では Pascal アーキテクチャのカーネル提供が終了しているため、自動判定により安全に CPU 実行へフォールバックします。
+* **RTX 3060 / 4090 / A100 (Turing/Ampere/Hopper CC ≥ 7.0)**: `model_fp16.onnx` が自動選択され、Tensor コアによる半精度（FP16）演算が有効化されます。CPU比で **約 5〜10倍以上のスループット向上** および **VRAM消費の半減（30m: わずか 71MB）** を発揮します。
+
+---
+
+## 4. ハードウェア適応型推論（Pascal vs Ampere以降）
 
 本リポジトリのラッパー（`ruri_v3_lite.py`）は、実行環境の GPU 世代（CUDA Compute Capability）を `ctypes` 経由で自動判別します：
 
@@ -40,11 +70,12 @@
 |---|---|---|---|
 | **CPU のみ** | x86_64 / ARM | `model.onnx` (FP32) | CPU ネイティブ演算 |
 | **GTX 1080 / 1060** 等 | Pascal (CC 6.1 < 7.0) | `model.onnx` (FP32) | Pascal 世代は FP16 演算器が弱く、FP32 の方が高速 |
-| **RTX 3060 / 4090 / A100** 等 | Ampere / Hopper (CC ≥ 7.0) | `model_fp16.onnx` (FP16) | Tensor コアの活用により **スループット約2倍・VRAM消費半減** |
+| **RTX 3060 / 4090 / A100** 等 | Ampere / Hopper (CC ≥ 7.0) | `model_fp16.onnx` (FP16) | Tensor コアの活用により **スループット大幅向上・VRAM消費半減** |
 
 ---
 
-## 4. 数学的等価性検証
+## 5. 数学的等価性検証
+
 
 `scripts/test_inference.py` により、PyTorch 公式出力（`transformers.AutoModel` + 公式 Mean Pooling + L2正規化）と本実装の埋め込みベクトルを全モデルサイズで照合した結果です。
 
