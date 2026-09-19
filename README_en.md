@@ -78,9 +78,11 @@ Detailed Report: [docs/benchmark.md](docs/benchmark.md)
 |---|---|---|---|
 | **Python Runtime Footprint (CPU)** | ~1,240 MB (~1.2 GB) | **~100 MB** | **🔥 92% Reduction** |
 | **Python Runtime Footprint (GPU)** | ~3,600 MB (~3.6 GB) | **~380 MB** | **🔥 89% Reduction** |
+| **Peak Runtime Memory (30m RAM RSS)** | 980.6 MB | **324.1 MB** | **🔥 67% Reduction** |
 | **Tokenizer Wheel Package** | ~10 MB (`sentencepiece`) | **1.7 MB** (`sentencepiece_lite`) | **83% Reduction** |
 | **Dictionary Model Loading** | In-memory parse & allocation | **4.57 MB (mmap zero-copy)** | **Zero allocation overhead** |
 | **Inference Wrapper Code Length** | 100,000+ lines (heavy dependency tree) | **Only 194 lines** | **Auditable & minimal** |
+
 
 
 
