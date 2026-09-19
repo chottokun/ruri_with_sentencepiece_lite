@@ -1,5 +1,7 @@
 # ruri_sentencepiece_lite
 
+[English](README_en.md) | [日本語](README.md)
+
 `torch` や `transformers` を一切使用せず、**`sentencepiece_lite` + `onnxruntime` + `numpy`** だけで動作する最速・極小フットプリントの日本語埋め込み（Embedding）環境です。
 
 ターゲットモデル: `cl-nagoya/ruri-v3` シリーズ（ModernBERTベース）  
