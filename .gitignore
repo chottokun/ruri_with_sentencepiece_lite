@@ -47,6 +47,7 @@ secrets.json
 # Model weights & large artifacts (do NOT track in git, upload to HF Hub)
 *.onnx
 *.onnx_data
+*.onnx.data
 *.bin
 *.safetensors
 *.pt
@@ -54,9 +55,11 @@ secrets.json
 *.spm.fb
 dist_assets/*.onnx
 dist_assets/*.onnx_data
+dist_assets/*.onnx.data
 dist_assets/*.spm.fb
 dist_assets/wheels/*.whl
 dist_assets/tokenizer.model
+build_spm/
 
 # Hugging Face cache
 .cache/
