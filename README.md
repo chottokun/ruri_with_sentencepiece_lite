@@ -6,12 +6,13 @@
 
 ターゲットモデル: `cl-nagoya/ruri-v3` シリーズ（ModernBERTベース）  
 配布先モデルハブ（Hugging Face）:
-- **30m (256次元)**: [`Chottokun/ruri-v3-30m-lite`](https://huggingface.co/Chottokun/ruri-v3-30m-lite)
-- **70m (384次元)**: [`Chottokun/ruri-v3-70m-lite`](https://huggingface.co/Chottokun/ruri-v3-70m-lite)
-- **130m (512次元)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
-- **310m (768次元)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
+- **30m 埋め込み (256次元)**: [`Chottokun/ruri-v3-30m-lite`](https://huggingface.co/Chottokun/ruri-v3-30m-lite)
+- **70m 埋め込み (384次元)**: [`Chottokun/ruri-v3-70m-lite`](https://huggingface.co/Chottokun/ruri-v3-70m-lite)
+- **130m 埋め込み (512次元)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
+- **310m 埋め込み (768次元)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
+- **310m リランカー (Cross-Encoder)**: [`Chottokun/ruri-v3-reranker-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-reranker-310m-lite) ⚡ *New!*
 
-**ナビゲーション**: [特徴](#-特徴と解決する課題) | [ベンチマーク](#-ベンチマーク要約-sentencepiece-lite--ort-vs-pytorch) | [利用方法](#-利用方法エンドユーザー環境) | [開発手順](#️-開発検証ビルド手順開発者向け) | [ライセンス・帰属表示・引用](#️-ライセンス帰属表示引用-license--attribution)
+**ナビゲーション**: [特徴](#-特徴と解決する課題) | [ベンチマーク](#-ベンチマーク要約) | [利用方法](#-利用方法エンドユーザー環境) | [リランカー利用方法](#-リランカーの利用方法rerank) | [ライセンス・帰属表示・引用](#️-ライセンス帰属表示引用-license--attribution)
 
 
 ---
@@ -56,9 +57,9 @@ ruri_sentencepiece_lite/
 
 ---
 
-## ⚡ ベンチマーク要約 (SentencePiece Lite & ORT vs PyTorch)
-
-詳細レポート: [docs/benchmark.md](docs/benchmark.md)
+## ⚡ ベンチマーク要約
+- 埋め込みモデル詳細レポート: [docs/benchmark.md](docs/benchmark.md)
+- リランカー詳細レポート: [docs/reranker_benchmark.md](docs/reranker_benchmark.md) ⚡ *New!*
 
 ### 1. 前処理トークナイザー単体性能 (10,000件)
 | 項目 | Hugging Face Fast Tokenizer | SentencePiece Lite (本実装) | 性能差 |
@@ -128,6 +129,48 @@ similarities = np.dot(q_emb, d_emb.T)[0]
 print(f"クエリ vs 東京: {similarities[0]:.4f}")
 print(f"クエリ vs 大阪: {similarities[1]:.4f}")
 ```
+
+---
+
+## 🎯 リランカーの利用方法（Rerank）
+
+検索システムや RAG の精度を最大化するための **超高速 Cross-Encoder リランカー** [`Chottokun/ruri-v3-reranker-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-reranker-310m-lite) です。  
+詳細レポート: [docs/reranker_benchmark.md](docs/reranker_benchmark.md)
+
+### クイックスタート
+
+```python
+from ruri_v3_reranker_lite import RuriV3RerankerLite
+
+# モデルのロード (Hugging Face Hub から自動キャッシュ)
+reranker = RuriV3RerankerLite(
+    repo_id="Chottokun/ruri-v3-reranker-310m-lite",
+    device="auto"  # GPU があれば FP16、CPUなら FP32 を自動選択
+)
+
+query = "日本の首都はどこですか？"
+documents = [
+    "日本の首都は東京都です。政治・経済の中枢が集約されています。",
+    "東京は日本の政治と文化の中心都市であり、多くの観光客が訪れます。",
+    "大阪は関西地方の主要都市で、独自の食文化やお笑いで知られています。",
+    "明日の天気は全国的に晴れのち曇りとなる見込みです。",
+    "ピタゴラスの定理は直角三角形の斜辺の長さを計算するための幾何学の基本法則です。"
+]
+
+# 降順ソートされたリランキング結果を取得 (Top-3)
+results = reranker.rerank(query, documents, top_k=3, normalize=True)
+
+for rank, item in enumerate(results, start=1):
+    print(f"Rank {rank}: Score={item['score']:.4f} (Index {item['index']}) -> {item['document']}")
+
+# 出力例:
+# Rank 1: Score=1.0000 (Index 0) -> 日本の首都は東京都です。政治・経済の中枢が集約されています。
+# Rank 2: Score=0.5633 (Index 1) -> 東京は日本の政治と文化の中心都市であり、多くの観光客が訪れます。
+# Rank 3: Score=0.0093 (Index 2) -> 大阪は関西地方の主要都市で、独自の食文化やお笑いで知られています。
+```
+
+> **💡 実務における推奨アーキテクチャ（2段階検索）**:
+> Cross-Encoder は計算量が $O(N)$ となるため、まず `ruri-v3-30m-lite`（Bi-Encoder 埋め込み）で数万件から **Top-20〜30 件** を数ミリ秒で絞り込み、その後 `ruri-v3-reranker-310m-lite` で精密リランキングを行うことで、**極小レイテンシと最高精度の両立** を実現できます。
 
 ---
 

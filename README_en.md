@@ -4,14 +4,15 @@
 
 An ultra-lightweight, zero-torch Japanese embedding inference environment powered strictly by **`sentencepiece_lite` + `onnxruntime` + `numpy`**.
 
-- **Target Model**: `cl-nagoya/ruri-v3` series (ModernBERT-based)
+- **Target Models**: `cl-nagoya/ruri-v3` series (ModernBERT-based)
 - **Hugging Face Model Hub**:
-  - **30m (256-dim)**: [`Chottokun/ruri-v3-30m-lite`](https://huggingface.co/Chottokun/ruri-v3-30m-lite)
-  - **70m (384-dim)**: [`Chottokun/ruri-v3-70m-lite`](https://huggingface.co/Chottokun/ruri-v3-70m-lite)
-  - **130m (512-dim)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
-  - **310m (768-dim)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
+  - **30m Embedding (256-dim)**: [`Chottokun/ruri-v3-30m-lite`](https://huggingface.co/Chottokun/ruri-v3-30m-lite)
+  - **70m Embedding (384-dim)**: [`Chottokun/ruri-v3-70m-lite`](https://huggingface.co/Chottokun/ruri-v3-70m-lite)
+  - **130m Embedding (512-dim)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
+  - **310m Embedding (768-dim)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
+  - **310m Reranker (Cross-Encoder)**: [`Chottokun/ruri-v3-reranker-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-reranker-310m-lite) ⚡ *New!*
 
-**Quick Links**: [Key Features](#-key-features--solved-challenges) | [Benchmark](#-benchmark-highlights-sentencepiece-lite--ort-vs-pytorch) | [Getting Started](#-getting-started-end-user-environment) | [Development](#️-development--reproduction-workflow) | [License & Citations](#️-license--attribution)
+**Quick Links**: [Key Features](#-key-features--solved-challenges) | [Benchmark](#-benchmark-highlights) | [Getting Started](#-getting-started-end-user-environment) | [Reranker Usage](#-using-the-reranker-cross-encoder) | [Development](#️-development--reproduction-workflow) | [License & Citations](#️-license--attribution)
 
 
 ---
@@ -57,9 +58,9 @@ ruri_sentencepiece_lite/
 
 ---
 
-## ⚡ Benchmark Highlights (SentencePiece Lite & ORT vs PyTorch)
-
-Detailed Report: [docs/benchmark.md](docs/benchmark.md)
+## ⚡ Benchmark Highlights
+- Embedding Models Detailed Report: [docs/benchmark.md](docs/benchmark.md)
+- Cross-Encoder Reranker Detailed Report: [docs/reranker_benchmark.md](docs/reranker_benchmark.md) ⚡ *New!*
 
 ### 1. Tokenizer Preprocessing Benchmark (10,000 Sentences)
 | Metric | Hugging Face Fast Tokenizer | SentencePiece Lite (Ours) | Speedup / Difference |
@@ -129,6 +130,48 @@ similarities = np.dot(q_emb, d_emb.T)[0]
 print(f"Query vs Tokyo: {similarities[0]:.4f}")
 print(f"Query vs Osaka: {similarities[1]:.4f}")
 ```
+
+---
+
+## 🎯 Using the Reranker (Cross-Encoder)
+
+Maximize retrieval precision in RAG systems with the **Ultra-Fast Cross-Encoder Reranker** [`Chottokun/ruri-v3-reranker-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-reranker-310m-lite).  
+Detailed Benchmark Report: [docs/reranker_benchmark.md](docs/reranker_benchmark.md)
+
+### Quickstart
+
+```python
+from ruri_v3_reranker_lite import RuriV3RerankerLite
+
+# Load model (automatically cached from Hugging Face Hub)
+reranker = RuriV3RerankerLite(
+    repo_id="Chottokun/ruri-v3-reranker-310m-lite",
+    device="auto"  # Loads FP16 on GPU (Compute Capability >= 7.0), FP32 on CPU
+)
+
+query = "日本の首都はどこですか？"
+documents = [
+    "日本の首都は東京都です。政治・経済の中枢が集約されています。",
+    "東京は日本の政治と文化の中心都市であり、多くの観光客が訪れます。",
+    "大阪は関西地方の主要都市で、独自の食文化やお笑いで知られています。",
+    "明日の天気は全国的に晴れのち曇りとなる見込みです。",
+    "ピタゴラスの定理は直角三角形の斜辺の長さを計算するための幾何学の基本法則です。"
+]
+
+# Get ranked results sorted in descending score order (Top-3)
+results = reranker.rerank(query, documents, top_k=3, normalize=True)
+
+for rank, item in enumerate(results, start=1):
+    print(f"Rank {rank}: Score={item['score']:.4f} (Index {item['index']}) -> {item['document']}")
+
+# Output:
+# Rank 1: Score=1.0000 (Index 0) -> 日本の首都は東京都です。政治・経済の中枢が集約されています。
+# Rank 2: Score=0.5633 (Index 1) -> 東京は日本の政治と文化の中心都市であり、多くの観光客が訪れます。
+# Rank 3: Score=0.0093 (Index 2) -> 大阪は関西地方の主要都市で、独自の食文化やお笑いで知られています。
+```
+
+> **💡 Best Practice: Two-Stage Hybrid Retrieval Pipeline**:
+> Since Cross-Encoder inference runs in $O(N)$ computational complexity per query, first retrieve **Top-20~30 candidates** within $< 10$ ms using `ruri-v3-30m-lite` (Bi-Encoder), then rerank them with `ruri-v3-reranker-310m-lite` to balance extreme low latency and maximal ranking precision.
 
 ---
 
