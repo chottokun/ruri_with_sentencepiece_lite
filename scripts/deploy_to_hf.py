@@ -6,15 +6,15 @@ dist_assets/ 以下の全成果物を Hugging Face Hub (chottokun/ruri-v3-30m-li
 """
 import os
 import sys
-from huggingface_hub import HfApi
+from huggingface_hub import HfApi, get_token
 
 def main():
-    hf_token = os.environ.get("HF_TOKEN")
+    hf_token = os.environ.get("HF_TOKEN") or get_token()
     if not hf_token:
-        print("エラー: 環境変数 'HF_TOKEN' が設定されていません。")
+        print("エラー: 有効な Hugging Face トークンが見つかりません。")
         print("実行例:")
         print("  export HF_TOKEN=\"hf_xxxxxxxxxxxxxxxxxxxx\"")
-        print("  uv run python scripts/deploy_to_hf.py")
+        print("  または huggingface-cli login")
         sys.exit(1)
 
     api = HfApi(token=hf_token)
