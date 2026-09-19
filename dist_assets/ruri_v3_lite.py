@@ -68,12 +68,29 @@ class RuriV3Lite:
             print("[RuriV3Lite] CPU 実行または force_fp32=True -> FP32 モデルをロード")
 
         # 2. モデル & トークナイザーの取得
+        # repo_id からサイズ名 (例: 70m, 130m, 310m) を推定、デフォルトは 30m
+        model_size = "30m"
+        for s in ["310m", "130m", "70m", "30m"]:
+            if s in repo_id.lower():
+                model_size = s
+                break
+
+        fb_filename = f"ruri_v3_{model_size}.spm.fb"
+
         if model_dir and os.path.exists(model_dir):
             model_path = os.path.join(model_dir, model_filename)
-            fb_path = os.path.join(model_dir, "ruri_v3_30m.spm.fb")
+            fb_path = os.path.join(model_dir, fb_filename)
+            if not os.path.exists(fb_path):
+                # 汎用 .spm.fb 探索
+                fbs = [f for f in os.listdir(model_dir) if f.endswith(".spm.fb")]
+                if fbs:
+                    fb_path = os.path.join(model_dir, fbs[0])
         else:
             model_path = hf_hub_download(repo_id=repo_id, filename=model_filename)
-            fb_path = hf_hub_download(repo_id=repo_id, filename="ruri_v3_30m.spm.fb")
+            try:
+                fb_path = hf_hub_download(repo_id=repo_id, filename=fb_filename)
+            except Exception:
+                fb_path = hf_hub_download(repo_id=repo_id, filename="ruri_v3_30m.spm.fb")
 
         # 3. SentencePiece Lite トークナイザーの初期化 (FlatBuffers, SBP並列対応)
         self.tokenizer = spl.FastSBPTokenizer(fb_path)

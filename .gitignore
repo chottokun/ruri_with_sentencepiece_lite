@@ -53,12 +53,19 @@ secrets.json
 *.pt
 *.pth
 *.spm.fb
+dist_assets/**/*.onnx
+dist_assets/**/*.onnx_data
+dist_assets/**/*.onnx.data
+dist_assets/**/*.spm.fb
+dist_assets/**/wheels/*.whl
+dist_assets/**/tokenizer.model
 dist_assets/*.onnx
 dist_assets/*.onnx_data
 dist_assets/*.onnx.data
 dist_assets/*.spm.fb
 dist_assets/wheels/*.whl
 dist_assets/tokenizer.model
+dist_assets/ruri_v3_*/
 build_spm/
 
 # Hugging Face cache

@@ -2,8 +2,12 @@
 
 `torch` や `transformers` を一切使用せず、**`sentencepiece_lite` + `onnxruntime` + `numpy`** だけで動作する最速・極小フットプリントの日本語埋め込み（Embedding）環境です。
 
-ターゲットモデル: [`cl-nagoya/ruri-v3-30m`](https://huggingface.co/cl-nagoya/ruri-v3-30m)（ModernBERTベース・256次元）  
-配布先モデルハブ: [`Chottokun/ruri-v3-30m-lite`](https://huggingface.co/Chottokun/ruri-v3-30m-lite)
+ターゲットモデル: `cl-nagoya/ruri-v3` シリーズ（ModernBERTベース）  
+配布先モデルハブ（Hugging Face）:
+- **30m (256次元)**: [`Chottokun/ruri-v3-30m-lite`](https://huggingface.co/Chottokun/ruri-v3-30m-lite)
+- **70m (384次元)**: [`Chottokun/ruri-v3-70m-lite`](https://huggingface.co/Chottokun/ruri-v3-70m-lite)
+- **130m (512次元)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
+- **310m (768次元)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
 
 ---
 
