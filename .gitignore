@@ -1,0 +1,76 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment variables & secrets (CRITICAL FOR GITHUB SECURITY)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
+credentials.json
+secrets.json
+
+# Model weights & large artifacts (do NOT track in git, upload to HF Hub)
+*.onnx
+*.onnx_data
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.spm.fb
+dist_assets/*.onnx
+dist_assets/*.onnx_data
+dist_assets/*.spm.fb
+dist_assets/wheels/*.whl
+dist_assets/tokenizer.model
+
+# Hugging Face cache
+.cache/
+hf_cache/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary / logs
+*.log
+scratch/
+tmp/
