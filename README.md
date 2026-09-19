@@ -2,100 +2,103 @@
 
 [English](README_en.md) | [日本語](README.md)
 
-`torch` や `transformers` を一切使用せず、**`sentencepiece_lite` + `onnxruntime` + `numpy`** だけで動作する最速・極小フットプリントの日本語埋め込み（Embedding）環境です。
+PyTorch や Transformers に依存せず、**`sentencepiece_lite` + `onnxruntime` + `numpy`** の軽量な依存関係のみで動作する日本語テキスト埋め込み（Embedding）およびリランカー（Cross-Encoder）推論環境です。
 
-ターゲットモデル: `cl-nagoya/ruri-v3` シリーズ（ModernBERTベース）  
-配布先モデルハブ（Hugging Face）:
-- **30m 埋め込み (256次元)**: [`Chottokun/ruri-v3-30m-lite`](https://huggingface.co/Chottokun/ruri-v3-30m-lite)
-- **70m 埋め込み (384次元)**: [`Chottokun/ruri-v3-70m-lite`](https://huggingface.co/Chottokun/ruri-v3-70m-lite)
-- **130m 埋め込み (512次元)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
-- **310m 埋め込み (768次元)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
-- **310m リランカー (Cross-Encoder)**: [`Chottokun/ruri-v3-reranker-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-reranker-310m-lite) ⚡ *New!*
+- **ターゲットモデル**: `cl-nagoya/ruri-v3` シリーズ（ModernBERT-Ja アーキテクチャ）
+- **Hugging Face モデルリポジトリ**:
+  - **30m 埋め込み (256次元)**: [`Chottokun/ruri-v3-30m-lite`](https://huggingface.co/Chottokun/ruri-v3-30m-lite)
+  - **70m 埋め込み (384次元)**: [`Chottokun/ruri-v3-70m-lite`](https://huggingface.co/Chottokun/ruri-v3-70m-lite)
+  - **130m 埋め込み (512次元)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
+  - **310m 埋め込み (768次元)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
+  - **310m リランカー (Cross-Encoder)**: [`Chottokun/ruri-v3-reranker-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-reranker-310m-lite)
 
-**ナビゲーション**: [特徴](#-特徴と解決する課題) | [ベンチマーク](#-ベンチマーク要約) | [利用方法](#-利用方法エンドユーザー環境) | [リランカー利用方法](#-リランカーの利用方法rerank) | [ライセンス・帰属表示・引用](#️-ライセンス帰属表示引用-license--attribution)
-
-
----
-
-## 💡 特徴と解決する課題
-
-| 課題（従来の PyTorch / Transformers 構成） | 本リポジトリの解決策（Zero-Torch & SBP） |
-|---|---|
-| **パッケージサイズが巨大**（PyTorch等で数GB消費） | **極小フットプリント**: 実行時は `sentencepiece_lite` + `onnxruntime` + `numpy` のみで動作。ディスク・起動オーバーヘッドを大幅削減。 |
-| **SentencePiece のビルド失敗**（CMake/gcc等のコンパイルが必要） | **完全ノーコンパイル導入**: 事前ビルド済み Wheel（`.whl`）を提供。`pip` 1行で導入可能。 |
-| **GPU が遊ぶ CPU ボトルネック**（前処理トークナイズが遅い） | **超高速並列トークナイズ**: Google の SentencePiece Lite と **Safe Boundary Pre-tokenization (SBP)** によるマルチスレッド処理。 |
-| **Pascal 世代（GTX 1080等）での FP16 低速化** | **ハードウェア適応型自動切り替え**: `ctypes` で GPU 世代（Compute Capability）を判定し、新世代は FP16、旧世代/CPU は FP32 を自動選択。 |
-| **自作実装による精度のズレ** | **数学的等価性**: PyTorch 公式出力（Mean Pooling + L2正規化）とのコサイン類似度 **1.0000** を実機実証済み。 |
+**ナビゲーション**: [特徴と技術的アプローチ](#技術的アプローチと解決する課題) | [性能評価要約](#性能評価要約) | [埋め込みの利用方法](#埋め込みモデルの利用方法encode) | [リランカーの利用方法](#リランカーの利用方法rerank) | [開発・検証手順](#開発検証ビルド手順開発者向け) | [ライセンス・帰属表示](#ライセンス再配布条件-apache-license-20)
 
 ---
 
-## 📁 ディレクトリ構成
+## 技術的アプローチと解決する課題
+
+| 従来の PyTorch / Transformers 構成 | 本実装（Zero-Torch 構成） | 技術的要因と特性 |
+|---|---|---|
+| **パッケージ容量の肥大化**<br>（PyTorch 等で数GB消費） | **軽量フットプリント**<br>（実行環境 約70〜100MB） | 実行時依存を `sentencepiece_lite`, `onnxruntime`, `numpy`, `huggingface_hub` に限定。コンテナサイズ縮小とコールドスタートを短縮。 |
+| **SentencePiece のビルド環境依存**<br>（CMake/gcc等のコンパイルが必要） | **事前ビルド済み Wheel の提供** | 事前ビルド済み Wheel（`.whl`）を提供し、C++ コンパイル不要で即時導入可能。 |
+| **前処理（トークナイズ）の遅延**<br>（GPUが遊休する要因） | **C++20 によるゼロコピー前処理** | FlatBuffers（`mmap`）および Safe Boundary Pre-tokenization（SBP）により、1文あたり約 3.4 µs で処理。 |
+| **旧世代 GPU での FP16 遅延**<br>（Pascal 世代等の制約） | **ハードウェア適応型自動切り替え** | `ctypes` で GPU Compute Capability を判定。7.0 以上は FP16、7.0 未満または CPU は FP32 を自動選択。 |
+| **自作ラッパーによる数値乖離の懸念** | **数学的等価性の検証済み** | PyTorch 公式出力（Mean Pooling + L2正規化）とのコサイン類似度 1.0000 を実機検証。 |
+
+---
+
+## ディレクトリ構成
 
 ```text
 ruri_sentencepiece_lite/
-├── AGENTS.md                  # 厳格な制約事項・セキュリティ方針 (uv利用・秘密情報保護)
-├── .gitignore                 # 巨大モデル重み・秘密情報・キャッシュの完全除外設定
+├── AGENTS.md                  # 厳格な開発制約・セキュリティ方針 (uv利用・秘密情報保護)
+├── .gitignore                 # 巨大モデル重み・秘密情報・キャッシュの除外設定
+├── .env.example               # 環境変数テンプレート (HF_TOKEN 等)
 ├── docs/
-│   └── benchmark.md           # 性能評価・トークナイザー＆推論ベンチマークレポート
-├── dist_assets/               # 配布用資産 (Hugging Face にアップロードされる成果物)
-│   ├── README.md              # Hugging Face モデルカード用ドキュメント
-│   ├── ruri_v3_lite.py        # 超軽量推論ラッパーモジュール (PyTorch非依存)
+│   ├── benchmark.md           # 埋め込みモデルの性能評価レポート
+│   └── reranker_benchmark.md  # リランカーモデルの性能評価・トレードオフ考察レポート
+├── dist_assets/               # 配布用資産 (Hugging Face リポジトリ配信用)
+│   ├── README.md              # Hugging Face モデルカード
+│   ├── ruri_v3_lite.py        # 埋め込み推論ラッパー (PyTorch非依存, 約190行)
+│   ├── ruri_v3_reranker_lite.py # リランカー推論ラッパー (PyTorch非依存, 約310行)
 │   ├── ruri_v3_30m.spm.fb     # FlatBuffers 形式トークナイザー辞書 (4.57MB)
 │   ├── tokenizer.model        # 元の SentencePiece 辞書
-│   ├── model.onnx             # FP32 ONNX モデル (CPU / GTX 1080等)
-│   ├── model.onnx.data        # FP32 外部テンソルバイナリ (141MB)
-│   ├── model_fp16.onnx        # FP16 ONNX モデル (RTX 3060 / A100等, 71MB)
+│   ├── model.onnx             # FP32 ONNX モデル
+│   ├── model_fp16.onnx        # FP16 ONNX モデル
 │   └── wheels/                # 事前ビルド済み sentencepiece_lite wheel
-│       └── sentencepiece_lite-0.1.0-cp311-cp311-linux_x86_64.whl
 └── scripts/
-    ├── verify_tokenizer.py    # Phase 0: 特殊トークン ID & プレフィックス検証
-    ├── build_and_export.py    # Phase 1: Wheel ビルド・FlatBuffers 変換・ONNX エクスポート
-    ├── deploy_to_hf.py        # Phase 3: Hugging Face への安全な自動デプロイ
-    ├── test_inference.py      # Phase 5: PyTorch公式出力との数学的等価性検証
-    └── benchmark.py           # 推論速度・スループット測定スクリプト
+    ├── verify_tokenizer.py    # トークナイザー仕様および特殊トークン ID 検証
+    ├── build_and_export.py    # Wheel ビルド、FlatBuffers 変換、ONNX エクスポート
+    ├── deploy_to_hf.py        # Hugging Face への埋め込みモデル自動デプロイ
+    ├── deploy_reranker_to_hf.py # Hugging Face へのリランカー自動デプロイ
+    ├── test_inference.py      # PyTorch 公式出力との数学的等価性検証
+    ├── test_reranker_robustness.py # リランカーの境界値・頑健性自動テストスイート
+    └── benchmark.py           # 推論レイテンシ・スループット測定スクリプト
 ```
 
 ---
 
-## ⚡ ベンチマーク要約
-- 埋め込みモデル詳細レポート: [docs/benchmark.md](docs/benchmark.md)
-- リランカー詳細レポート: [docs/reranker_benchmark.md](docs/reranker_benchmark.md) ⚡ *New!*
+## 性能評価要約
 
-### 1. 前処理トークナイザー単体性能 (10,000件)
-| 項目 | Hugging Face Fast Tokenizer | SentencePiece Lite (本実装) | 性能差 |
+詳細な実測値・プロファイリング・分析については各レポートをご参照ください：
+- 埋め込みモデル詳細: [docs/benchmark.md](docs/benchmark.md)
+- リランカー詳細: [docs/reranker_benchmark.md](docs/reranker_benchmark.md)
+
+### 1. 前処理トークナイザー単体性能 (10,000 件, CPU)
+| トークナイザー実装 | 10,000件処理時間 | スループット | 1件あたり平均レイテンシ | 速度比 |
+|---|---|---|---|---|
+| **Hugging Face Fast Tokenizer** (Rustベース) | 455.03 ms | 21,976 sent/s | 45.50 µs | 1.00x (基準) |
+| **SentencePiece Lite (本実装)** (C++20 Zero-copy) | **33.97 ms** | **294,395 sent/s** | **3.40 µs** | **約 13.4 倍 高速** |
+
+### 2. End-to-End 推論性能とバッチサイズによる特性 (30m / CPU)
+| バッチサイズ | PyTorch 2.14 CPU | RuriV3Lite (本実装) CPU | レイテンシ比 | 特性判定 |
+|---|---|---|---|---|
+| **Batch = 1 (単一クエリ)** | 5.90 ms | **2.98 ms** | **1.98x 高速** | 本実装優位（Pythonオーバーヘッド極小） |
+| **Batch = 8** | 15.22 ms | **11.39 ms** | **1.34x 高速** | 本実装優位 |
+| **Batch = 16** | 27.35 ms | **26.79 ms** | 1.02x (同等) | 性能交差点（Breakeven point） |
+| **Batch = 64** | 93.97 ms | 124.08 ms | 0.76x (PyTorch優位) | 行列演算時間（GEMM）が支配的 |
+
+> **アーキテクチャ上の選定指針**:
+> - **WebAPI・検索・サーバーレス環境（Batch 1〜8）**: Python ディスパッチコストが小さく、インストール容量とコールドスタートを大幅に抑制できる本実装が適しています。
+> - **オフライン一括バッチ処理（Batch 32〜64）**: Intel MKL 最適化カーネルを持つ PyTorch (LibTorch) がスループット面で約 1.25〜1.3 倍優位となります。
+
+### 3. パッケージ容量・メモリ消費量（実測値）
+| 評価項目 | 従来の標準構成 (PyTorch + Transformers) | 本実装 (Zero-Torch 構成) | 削減率 |
 |---|---|---|---|
-| **10,000件処理時間** | 455.03 ms | **33.97 ms** | **約 13.4 倍 高速** ⚡ |
-| **スループット** | 21,976 sent/s | **294,395 sent/s** | **毎秒約30万文** |
-| **1件あたり平均レイテンシ** | 45.5 µs | **3.40 µs** | **極小オーバーヘッド** |
-
-### 2. End-to-End 埋め込み生成性能 (`encode()` 総合)
-| 項目 (30m / CPU) | PyTorch 2.14 (Transformers) | RuriV3Lite (本実装) | 性能差 |
-|---|---|---|---|
-| **単一クエリ応答レイテンシ** | 6.03 ms | **2.94 ms** | **約 2.05 倍 高速** ⚡ |
-
-### 3. パッケージ容量・バイナリサイズ・コード規模の実測比較
-| 項目 | 従来の標準構成 (PyTorch + Transformers) | 本実装 (Zero-Torch 構成) | 削減率 |
-|---|---|---|---|
-| **Python ランタイム総容量 (CPU)** | 約 1,240 MB (~1.2 GB) | **約 100 MB** | **🔥 92% 削減** |
-| **Python ランタイム総容量 (GPU)** | 約 3,600 MB (~3.6 GB) | **約 380 MB** | **🔥 89% 削減** |
-| **実行時ピークメモリ (30m RAM RSS)** | 980.6 MB | **324.1 MB** | **🔥 67% 削減** |
-| **トークナイザー Wheel** | 約 10 MB (`sentencepiece`) | **1.7 MB** (`sentencepiece_lite`) | **83% 削減** |
-| **辞書バイナリ読み込み** | メモリパース展開あり | **4.57 MB (mmap ゼロコピー)** | **メモリ展開オーバーヘッド 0** |
-| **推論ラッパーコード行数** | 数十万行（巨大な依存ツリー） | **わずか 194 行** | **可読性・監査容易** |
-
-
-
+| **Python ランタイム総容量 (CPU)** | 約 1,240 MB (~1.2 GB) | **約 100 MB** | **約 92% 削減** |
+| **実行時常駐メモリ (30m RAM RSS)** | 980.6 MB | **324.1 MB** | **約 67% 削減** |
+| **トークナイザー Wheel** | 約 10 MB (`sentencepiece`) | **1.7 MB** (`sentencepiece_lite`) | **約 83% 削減** |
+| **辞書バイナリ読み込み** | メモリパース展開あり | **4.57 MB (mmap ゼロコピー)** | **メモリ展開負荷ゼロ** |
 
 ---
 
-## 🚀 利用方法（エンドユーザー環境）
-
-エンドユーザー環境では、**PyTorch や Transformers、C++ コンパイラをインストールする必要はありません。**
+## 埋め込みモデルの利用方法（Encode）
 
 ### 1. インストール
 
 ```bash
-# 事前ビルド済み Wheel と推論ランタイムの導入
+# 事前ビルド済み Wheel と推論ランタイムの導入 (CPU)
 pip install https://huggingface.co/Chottokun/ruri-v3-30m-lite/resolve/main/wheels/sentencepiece_lite-0.1.0-cp311-cp311-linux_x86_64.whl \
             onnxruntime numpy huggingface_hub
 
@@ -109,7 +112,7 @@ pip install onnxruntime-gpu
 from ruri_v3_lite import RuriV3Lite
 import numpy as np
 
-# インスタンス化 (GPU の世代を自動判定し、最適な FP16 または FP32 モデルをロード)
+# インスタンス化 (ハードウェア世代に応じて FP16 / FP32 を自動選択)
 model = RuriV3Lite(repo_id="Chottokun/ruri-v3-30m-lite")
 
 # ruri-v3 推奨のプレフィックス付きテキスト
@@ -123,7 +126,7 @@ documents = [
 q_emb = model.encode(queries)
 d_emb = model.encode(documents)
 
-# コサイン類似度計算 (内積で算出可能)
+# コサイン類似度計算 (L2正規化済みの内積)
 similarities = np.dot(q_emb, d_emb.T)[0]
 
 print(f"クエリ vs 東京: {similarities[0]:.4f}")
@@ -132,27 +135,30 @@ print(f"クエリ vs 大阪: {similarities[1]:.4f}")
 
 ---
 
-## 🎯 リランカーの利用方法（Rerank）
+## リランカーの利用方法（Rerank）
 
-検索システムや RAG の精度を最大化するための **超高速 Cross-Encoder リランカー** [`Chottokun/ruri-v3-reranker-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-reranker-310m-lite) です。  
-詳細レポート: [docs/reranker_benchmark.md](docs/reranker_benchmark.md)
+検索システムや RAG の適合度を向上させる Cross-Encoder モデル [`Chottokun/ruri-v3-reranker-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-reranker-310m-lite) です。
+
+### 多段階モデルの選択肢
+
+| `precision` 引数 | 実体サイズ | 配信サイズ (Gzip) | CPU レイテンシ (Top-10) | 順位一致度 | 特徴と用途 |
+|---|---|---|---|---|---|
+| `"auto"` (デフォルト) | - | - | - | - | GPU で FP16、CPU で INT8-Full を自動選択 |
+| `"int8_full"` | 301 MB | 202 MB | 2,116 ms | 100% 一致 | **CPU推奨本流**: ダウンロード最小化・順位完全一致 |
+| `"pruned_16l"` | 220 MB | 178 MB | 1,382 ms | Top-1 一致 | **低遅延用途**: 16層間引きによる 1.87倍速（Top-1維持） |
+| `"int8"` | 526 MB | - | 2,072 ms | 微小差 | 線形層のみ 8bit 動的量子化 |
+| `"fp16"` | 601 MB | - | (GPU専用) | 100% 一致 | Tensor Core GPU 最適化 |
+| `"fp32"` | 1,202 MB | - | 2,589 ms | 基準 | FP32 フル精度モデル |
 
 ### クイックスタート
 
 ```python
 from ruri_v3_reranker_lite import RuriV3RerankerLite
 
-# モデルのロード (Hugging Face Hub から自動キャッシュ)
-# 精度・サイズオプション:
-# - "auto": CPU で INT8-Full (301MB / 配信 202MB)、GPU で FP16 (601MB) を自動選択
-# - "int8_full": 301 MB (配信 202 MB) 極小完全モデル (CPU 1.22倍速・順位100%完全一致) ⚡ [おすすめ本流]
-# - "pruned_16l": 220 MB (配信 178 MB) 16層超軽量モデル (CPU 1.87倍速・Top-1維持) 🚀 [極限高速]
-# - "int8": 526 MB 線形層動的量子化モデル
-# - "fp16": 601 MB Tensor Core GPU 最適化モデル
-# - "fp32": 1,202 MB 標準フル精度モデル
+# モデルのロード (Hugging Face Hub から自動ダウンロード・透過展開)
 reranker = RuriV3RerankerLite(
     repo_id="Chottokun/ruri-v3-reranker-310m-lite",
-    precision="int8_full",  # または "pruned_16l" で最速推論
+    precision="int8_full",  # または "pruned_16l"
     device="cpu"
 )
 
@@ -170,21 +176,16 @@ results = reranker.rerank(query, documents, top_k=3, normalize=True)
 
 for rank, item in enumerate(results, start=1):
     print(f"Rank {rank}: Score={item['score']:.4f} (Index {item['index']}) -> {item['document']}")
-
-# 出力例:
-# Rank 1: Score=0.9990 (Index 0) -> 日本の首都は東京都です。政治・経済の中枢が集約されています。
-# Rank 2: Score=0.5633 (Index 1) -> 東京は日本の政治と文化の中心都市であり、多くの観光客が訪れます。
-# Rank 3: Score=0.0093 (Index 2) -> 大阪は関西地方の主要都市で、独自の食文化やお笑いで知られています。
 ```
 
-> **💡 実務における推奨アーキテクチャ（2段階検索）**:
-> Cross-Encoder は計算量が $O(N)$ となるため、まず `ruri-v3-30m-lite`（Bi-Encoder 埋め込み）で数万件から **Top-20〜30 件** を数ミリ秒で絞り込み、その後 `ruri-v3-reranker-310m-lite` で精密リランキングを行うことで、**極小レイテンシと最高精度の両立** を実現できます。
+> **実務における検索パイプライン設計（2段階検索）**:
+> Cross-Encoder は計算量が $O(N)$ となるため、まず `ruri-v3-30m-lite`（Bi-Encoder 埋め込み）で大量の候補から **Top-20〜30 件** を数ミリ秒で絞り込み、その後に `ruri-v3-reranker-310m-lite` で精密リランキングを行うことで、レイテンシと精度のバランスが取れたシステムを構築できます。
 
 ---
 
-## 🛠️ 開発・検証・ビルド手順（開発者向け）
+## 開発・検証・ビルド手順（開発者向け）
 
-本リポジトリでの全操作は `uv` を使用します。
+本リポジトリでの環境構築・操作は `uv` を使用します。
 
 ### 1. 仮想環境の準備
 ```bash
@@ -192,80 +193,78 @@ uv venv --python 3.11 .venv
 source .venv/bin/activate
 ```
 
-### 2. トークナイザー仕様の検証 (Phase 0)
+### 2. トークナイザー仕様の検証
 ```bash
 uv run python scripts/verify_tokenizer.py
 ```
-> `<s>` (1), `</s>` (2), `<pad>` (3) の特殊トークン仕様および公式出力との 100% 一致を確認します。
+> `<s>` (1), `</s>` (2), `<pad>` (3) の特殊トークン仕様および公式出力との一致を確認します。
 
-### 3. 資産のビルドとエクスポート (Phase 1)
+### 3. 資産のビルドとエクスポート
 ```bash
 uv run python scripts/build_and_export.py
 ```
 > SentencePiece Lite の Wheel コンパイル、FlatBuffers 形式への変換、FP32/FP16 ONNX へのエクスポートを一括実行します。
 
-### 4. 推論精度の完全一致検証 (Phase 5)
+### 4. 推論精度の完全一致検証
 ```bash
 uv run python scripts/test_inference.py
 ```
-> PyTorch 公式モデル出力と本実装の出力を直接照合し、コサイン類似度 **0.9999以上（実測 1.00000000）** を検証します。
+> PyTorch 公式モデル出力と本実装の出力を照合し、コサイン類似度 0.9999 以上（実測 1.0000）を検証します。
 
-### 5. Hugging Face へのデプロイ (Phase 3)
+### 5. リランカーの頑健性テスト
+```bash
+uv run python scripts/test_reranker_robustness.py
+```
+> 空入力、超長文、特殊文字、バッチ境界値を含む全テスト項目を検証します。
 
-設定用テンプレートから `.env` を作成します（`.gitignore` により Git 管理からは自動除外されます）：
+### 6. Hugging Face へのデプロイ
+
+設定用テンプレートから `.env` を作成します（Git 管理からは自動除外されます）：
 ```bash
 cp .env.example .env
 # .env を編集して HF_TOKEN="hf_xxx", 任意で HF_USERNAME="xxx" を設定
 ```
 
-指定モデルまたは全モデルをアップロードします：
+指定モデルをアップロードします：
 ```bash
-# 70m をデプロイする場合
-uv run python scripts/deploy_to_hf.py --model 70m
+# 埋め込みモデルのデプロイ
+uv run python scripts/deploy_to_hf.py --model 30m
 
-# または環境変数を直接渡してデプロイ
-export HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxx"
-uv run python scripts/deploy_to_hf.py --model 130m
+# リランカーモデルのデプロイ
+uv run python scripts/deploy_reranker_to_hf.py
 ```
 
 ---
 
-## 🔒 セキュリティと機微情報保護方針
-- Hugging Face の書き込みトークン（`HF_TOKEN`）を含む一切の秘密情報はコード内に記述せず、環境変数経由でのみ受け取ります。
-- 巨大なモデルバイナリ（`*.onnx`, `*.onnx.data`, `*.spm.fb`, `*.whl`）やキャッシュディレクトリは `.gitignore` により Git 追跡から完全に除外されています。
+## セキュリティと機微情報保護方針
+- Hugging Face の書き込みトークン（`HF_TOKEN`）等の秘密情報はコード内に記述せず、環境変数経由でのみ受け取ります。
+- 巨大なモデルバイナリ（`*.onnx`, `*.onnx.data`, `*.spm.fb`, `*.whl`）やキャッシュディレクトリは `.gitignore` により Git 管理から除外されています。
 
 ---
 
-## ⚖️ ライセンス・再配布条件 (Apache License 2.0)
+## ライセンス・再配布条件 (Apache License 2.0)
 
-本プロジェクトのソースコード、変換済みモデルバイナリ、および配布資材は、**Apache License, Version 2.0**（以下「本ライセンス」）に基づいて提供されます。本ライセンスに準拠しない限り、これらのファイルを使用することはできません。ライセンスの写しは以下から入手できます：
-
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
-
-適用される法律で義務付けられている場合、または書面で合意されている場合を除き、本ライセンスに基づいて配布されるソフトウェアは、明示的または黙示的を問わず、いかなる種類の保証も条件もなしに「現状のまま（AS IS）」で配布されます。本ライセンスに基づく権限および制限を規定する特定の言語については、本ライセンスを参照してください（リポジトリ内の [LICENSE](LICENSE) ファイルに全文を収録）。
-
+本プロジェクトのソースコード、変換済みモデルバイナリ、および配布資材は、**Apache License, Version 2.0** に基づいて提供されます。ライセンスの写しは [LICENSE](LICENSE) ファイルに収録されています。
 
 ### 1. ベースモデル (Base Model)
-- **モデル**: [`cl-nagoya/ruri-v3`](https://huggingface.co/collections/cl-nagoya/ruri-v3-67c006886e0621255e7fcb99) (`30m`, `70m`, `130m`, `310m`)
+- **モデル**: [`cl-nagoya/ruri-v3`](https://huggingface.co/collections/cl-nagoya/ruri-v3-67c006886e0621255e7fcb99) (`30m`, `70m`, `130m`, `310m`, `reranker-310m`)
 - **開発元**: 名古屋大学 自然言語処理研究室 (Nagoya University, cl-nagoya)
 - **原著作者**: 塚越 隼人 (Hayato Tsukagoshi), 笹野 遼平 (Ryohei Sasano)
 - **ライセンス**: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
 - **改変内容**:
-  - 公式 Safetensors 重みから ONNX (FP32) および ONNX (FP16) 形式への変換・エクスポート
+  - 公式 Safetensors 重みから ONNX (FP32, FP16, INT8, Pruned) 形式への変換・エクスポート
   - 公式 SentencePiece 辞書を SentencePiece Lite 用 FlatBuffers バイナリ (`.spm.fb`) に変換
-  - PyTorch / Transformers を一切使用しない高速推論ラッパー (`ruri_v3_lite.py`) の新規実装
+  - PyTorch / Transformers 非依存の推論ラッパー (`ruri_v3_lite.py`, `ruri_v3_reranker_lite.py`) の新規実装
 
 ### 2. トークナイザーコア (SentencePiece Lite)
 - **ライブラリ**: [Google SentencePiece Lite](https://google.github.io/sentencepiece/lite/)
 - **リポジトリ**: [github.com/google/sentencepiece](https://github.com/google/sentencepiece)
 - **権利表記**: Copyright 2018 Google LLC
 - **ライセンス**: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
-- **特徴**: C++20 で実装された極小・超高速なサブワードトークナイザー。Safe Boundary Pre-tokenization (SBP) によるマルチスレッド並列処理と FlatBuffers によるゼロコピー mmap 辞書読み込みに対応。
 
-### 3. 原著論文の引用 (Citations)
-本リポジトリおよびモデルをご利用の際は、以下の原著論文の引用をお願いいたします：
+### 3. 引用 (Citations)
 
-#### Ruri (埋め込みモデル)
+#### Ruri (埋め込み・リランカーモデル)
 ```bibtex
 @misc{Ruri,
   title={{Ruri: Japanese General Text Embeddings}}, 
@@ -293,5 +292,3 @@ uv run python scripts/deploy_to_hf.py --model 130m
   pages = "66--71",
 }
 ```
-
-
