@@ -280,10 +280,18 @@ torch.onnx.export(
     opset_version=17,
     do_constant_folding=True
 )
-print(f"FP32 ONNX exported: {fp32_onnx_path} (size: {os.path.getsize(fp32_onnx_path)} bytes)")
+
+# PyTorch 2.14 の Split 属性 (num_outputs) クリーンアップ (ONNX Runtime 互換性維持)
+fp32_model = onnx.load(fp32_onnx_path)
+for node in fp32_model.graph.node:
+    if node.op_type == "Split":
+        attrs_to_remove = [a for a in node.attribute if a.name == "num_outputs"]
+        for a in attrs_to_remove:
+            node.attribute.remove(a)
+onnx.save(fp32_model, fp32_onnx_path)
+print(f"FP32 ONNX exported and sanitized: {fp32_onnx_path}")
 
 print("\n=== [5/6] FP16 ONNX への変換 ===")
-fp32_model = onnx.load(fp32_onnx_path)
 fp16_model = float16.convert_float_to_float16(
     fp32_model,
     keep_io_types=True,
