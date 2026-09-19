@@ -144,13 +144,15 @@ from ruri_v3_reranker_lite import RuriV3RerankerLite
 
 # モデルのロード (Hugging Face Hub から自動キャッシュ)
 # 精度・サイズオプション:
-# - "int8_full": 301 MB 極小限界モデル (CPU 最速・1/4サイズ・順位完全維持) ⚡ [おすすめ]
+# - "auto": CPU で INT8-Full (301MB / 配信 202MB)、GPU で FP16 (601MB) を自動選択
+# - "int8_full": 301 MB (配信 202 MB) 極小完全モデル (CPU 1.22倍速・順位100%完全一致) ⚡ [おすすめ本流]
+# - "pruned_16l": 220 MB (配信 178 MB) 16層超軽量モデル (CPU 1.87倍速・Top-1維持) 🚀 [極限高速]
 # - "int8": 526 MB 線形層動的量子化モデル
 # - "fp16": 601 MB Tensor Core GPU 最適化モデル
 # - "fp32": 1,202 MB 標準フル精度モデル
 reranker = RuriV3RerankerLite(
     repo_id="Chottokun/ruri-v3-reranker-310m-lite",
-    precision="int8_full",  # 301MB 極小モデルを指定
+    precision="int8_full",  # または "pruned_16l" で最速推論
     device="cpu"
 )
 

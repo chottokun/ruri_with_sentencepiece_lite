@@ -145,13 +145,15 @@ from ruri_v3_reranker_lite import RuriV3RerankerLite
 
 # Load model (automatically cached from Hugging Face Hub)
 # Precision options:
-# - "int8_full": 301 MB ultra-compact (fastest on CPU, 1/4 size, 100% rank preservation) ⚡ [Recommended]
+# - "auto": CPU automatically selects INT8-Full (301MB / 202MB Gzip), GPU selects FP16 (601MB)
+# - "int8_full": 301 MB (download: 202 MB) ultra-compact model (1.22x speedup, 100% rank preservation) ⚡ [Mainstream]
+# - "pruned_16l": 220 MB (download: 178 MB) 16-layer ultra-fast model (1.87x speedup, Top-1 preserved) 🚀 [Ultra-Fast]
 # - "int8": 526 MB linear-only quantized
 # - "fp16": 601 MB GPU-optimized (Turing/Ampere+)
 # - "fp32": 1,202 MB baseline full precision
 reranker = RuriV3RerankerLite(
     repo_id="Chottokun/ruri-v3-reranker-310m-lite",
-    precision="int8_full",  # 301 MB ultra-compact model
+    precision="int8_full",  # or "pruned_16l" for fastest CPU inference
     device="cpu"
 )
 

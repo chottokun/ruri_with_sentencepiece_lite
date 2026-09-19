@@ -4,6 +4,8 @@ PyTorch / Transformers は完全不要。
 """
 import ctypes
 import os
+import gzip
+import shutil
 from typing import List, Tuple, Dict, Any, Union, Optional
 import numpy as np
 import onnxruntime as ort
@@ -64,20 +66,24 @@ class RuriV3RerankerLite:
             model_dir: ローカルモデル保存ディレクトリ
             force_fp32: True の場合強制的に FP32 (互換性用引数)
             precision: モデル精度・サイズ指定
-                - "auto": GPU (CC >= 7.0) では FP16、CPU では FP32
+                - "auto": GPU (CC >= 7.0) では FP16、CPU では INT8-Full (301MB / 202MB Gzip)
                 - "fp32": FP32 元モデル (約 1,200 MB, 最高精度)
                 - "fp16": FP16 半精度 (約 601 MB, Tensor Core GPU 最適化)
                 - "int8": INT8 線形層量子化 (約 526 MB, CPU高速)
-                - "int8_full": INT8 線形層+語彙テーブル完全量子化 (約 301 MB, 極小・最速)
+                - "int8_full": INT8 線形層+語彙テーブル完全量子化 (約 301 MB / Gzip配信 202MB, 極小・高精度)
+                - "pruned_16l": 16層剪定 INT8 モデル (約 220 MB / Gzip配信 178MB, 最速・超軽量)
             device: "auto", "cuda", "cpu"
         """
         available_providers = ort.get_available_providers()
         want_cuda = (device == "cuda") or (device == "auto" and "CUDAExecutionProvider" in available_providers)
 
         # 1. 精度・モデルファイル名の決定
-        if precision == "int8_full":
+        if precision == "pruned_16l":
+            model_filename = "model_pruned_16l_int8.onnx"
+            print("[RuriV3RerankerLite] precision='pruned_16l' 指定 -> 220MB (Gzip 178MB) 16層超軽量モデルをロード")
+        elif precision == "int8_full":
             model_filename = "model_int8_full.onnx"
-            print("[RuriV3RerankerLite] precision='int8_full' 指定 -> 301MB 極小量子化モデルをロード")
+            print("[RuriV3RerankerLite] precision='int8_full' 指定 -> 301MB (Gzip 202MB) 極小量子化モデルをロード")
         elif precision == "int8":
             model_filename = "model_int8.onnx"
             print("[RuriV3RerankerLite] precision='int8' 指定 -> 526MB INT8 モデルをロード")
@@ -97,14 +103,20 @@ class RuriV3RerankerLite:
                     model_filename = "model.onnx"
                     print(f"[RuriV3RerankerLite] GPU Capability {capability:.1f} < 7.0 検知 -> FP32 モデルをロード")
             else:
-                model_filename = "model.onnx"
-                print("[RuriV3RerankerLite] CPU 実行 (precision='auto') -> FP32 モデルをロード")
+                model_filename = "model_int8_full.onnx"
+                print("[RuriV3RerankerLite] CPU 実行 (precision='auto') -> 最適な 301MB (Gzip 202MB) INT8-Full モデルをロード")
 
         # 2. FlatBuffers トークナイザー辞書ファイル名の決定
         fb_filename = "ruri_v3_reranker_310m.spm.fb"
 
         if model_dir and os.path.exists(model_dir):
             model_path = os.path.join(model_dir, model_filename)
+            # ローカルに .onnx がなく .onnx.gz がある場合は自動展開
+            if not os.path.exists(model_path) and os.path.exists(model_path + ".gz"):
+                print(f"[RuriV3RerankerLite] ローカルの {model_filename}.gz を自動展開中...")
+                with gzip.open(model_path + ".gz", "rb") as f_in, open(model_path, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
             fb_path = os.path.join(model_dir, fb_filename)
             if not os.path.exists(fb_path):
                 # 代替候補探索
@@ -114,7 +126,21 @@ class RuriV3RerankerLite:
                 else:
                     raise FileNotFoundError(f"FlatBuffers 辞書 (*.spm.fb) が {model_dir} に見つかりません。")
         else:
-            model_path = hf_hub_download(repo_id=repo_id, filename=model_filename)
+            # Hugging Face Hub からのダウンロード
+            # まず高速な Gzip 配信版 (*.onnx.gz) の存在を優先確認して透過解凍
+            gz_filename = model_filename + ".gz"
+            try:
+                gz_download_path = hf_hub_download(repo_id=repo_id, filename=gz_filename)
+                target_onnx_path = os.path.splitext(gz_download_path)[0]
+                if not os.path.exists(target_onnx_path) or os.path.getsize(target_onnx_path) == 0:
+                    print(f"[RuriV3RerankerLite] 透過的 Gzip 高速展開中 ({gz_filename} -> {model_filename})...")
+                    with gzip.open(gz_download_path, "rb") as f_in, open(target_onnx_path, "wb") as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                model_path = target_onnx_path
+            except Exception:
+                # Gzip 版が存在しない場合は直接 .onnx をダウンロード
+                model_path = hf_hub_download(repo_id=repo_id, filename=model_filename)
+
             try:
                 fb_path = hf_hub_download(repo_id=repo_id, filename=fb_filename)
             except Exception:
