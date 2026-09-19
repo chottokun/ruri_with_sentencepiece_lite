@@ -1,5 +1,4 @@
-"""Hugging Face Hub (Chottokun/ruri-v3-reranker-310m-lite) からの自動ダウンロード推論テスト
-PyTorch / Transformers 一切不要の完全 Zero-Torch 動作を実証します。
+"""Hugging Face Hub からの precision="int8_full" (301MB) 自動ダウンロード・推論テスト
 """
 import sys
 import os
@@ -9,11 +8,14 @@ from ruri_v3_reranker_lite import RuriV3RerankerLite
 
 def main():
     print("=" * 70)
-    print("  Hugging Face Hub 自動ダウンロード推論テスト")
+    print("  Hugging Face Hub precision='int8_full' (301MB) 自動ダウンロード推論テスト")
     print("=" * 70)
 
-    # model_dir を指定せず repo_id から直接取得
-    reranker = RuriV3RerankerLite(repo_id="Chottokun/ruri-v3-reranker-310m-lite", device="cpu")
+    reranker = RuriV3RerankerLite(
+        repo_id="Chottokun/ruri-v3-reranker-310m-lite",
+        precision="int8_full",
+        device="cpu"
+    )
 
     query = "日本の首都はどこですか？"
     documents = [
@@ -26,7 +28,7 @@ def main():
         print(f"Rank {r}: Score={item['score']:.4f} (Index {item['index']}) -> {item['document']}")
 
     assert results[0]["index"] == 0, "東京が1位になっていません"
-    print("✅ Hugging Face Hub からのダウンロード・推論に完全成功しました！")
+    print("✅ 301MB 極小モデルの Hub ダウンロード・推論に完全成功しました！")
 
 if __name__ == "__main__":
     main()

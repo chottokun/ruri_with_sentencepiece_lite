@@ -51,30 +51,54 @@ class RuriV3RerankerLite:
         repo_id: str = "Chottokun/ruri-v3-reranker-310m-lite",
         model_dir: Optional[str] = None,
         force_fp32: bool = False,
+        precision: str = "auto",  # "auto", "fp32", "fp16", "int8", "int8_full"
         device: str = "auto"  # "auto", "cuda", "cpu"
     ):
         """
         初期化:
         model_dir が指定されている場合はローカルパスから読み込み、
         未指定の場合は Hugging Face Hub (repo_id) からダウンロード・キャッシュします。
+
+        Args:
+            repo_id: Hugging Face リポジトリID
+            model_dir: ローカルモデル保存ディレクトリ
+            force_fp32: True の場合強制的に FP32 (互換性用引数)
+            precision: モデル精度・サイズ指定
+                - "auto": GPU (CC >= 7.0) では FP16、CPU では FP32
+                - "fp32": FP32 元モデル (約 1,200 MB, 最高精度)
+                - "fp16": FP16 半精度 (約 601 MB, Tensor Core GPU 最適化)
+                - "int8": INT8 線形層量子化 (約 526 MB, CPU高速)
+                - "int8_full": INT8 線形層+語彙テーブル完全量子化 (約 301 MB, 極小・最速)
+            device: "auto", "cuda", "cpu"
         """
         available_providers = ort.get_available_providers()
         want_cuda = (device == "cuda") or (device == "auto" and "CUDAExecutionProvider" in available_providers)
 
-        # 1. ハードウェア世代に応じたモデル判定 (Tensor Core 最適化)
-        if want_cuda and not force_fp32:
-            capability = get_cuda_compute_capability()
-            # Turing (7.5) / Ampere (8.6: RTX 3060) 以降は FP16
-            # Pascal (6.1: GTX 1080) 等は 7.0 未満のため FP32
-            if capability >= 7.0:
-                model_filename = "model_fp16.onnx"
-                print(f"[RuriV3RerankerLite] GPU Capability {capability:.1f} >= 7.0 検知 -> FP16 モデルをロード")
+        # 1. 精度・モデルファイル名の決定
+        if precision == "int8_full":
+            model_filename = "model_int8_full.onnx"
+            print("[RuriV3RerankerLite] precision='int8_full' 指定 -> 301MB 極小量子化モデルをロード")
+        elif precision == "int8":
+            model_filename = "model_int8.onnx"
+            print("[RuriV3RerankerLite] precision='int8' 指定 -> 526MB INT8 モデルをロード")
+        elif precision == "fp16":
+            model_filename = "model_fp16.onnx"
+            print("[RuriV3RerankerLite] precision='fp16' 指定 -> 601MB FP16 モデルをロード")
+        elif precision == "fp32" or force_fp32:
+            model_filename = "model.onnx"
+            print("[RuriV3RerankerLite] precision='fp32' 指定 -> 1,202MB FP32 モデルをロード")
+        else:  # auto
+            if want_cuda:
+                capability = get_cuda_compute_capability()
+                if capability >= 7.0:
+                    model_filename = "model_fp16.onnx"
+                    print(f"[RuriV3RerankerLite] GPU Capability {capability:.1f} >= 7.0 検知 -> FP16 モデルをロード")
+                else:
+                    model_filename = "model.onnx"
+                    print(f"[RuriV3RerankerLite] GPU Capability {capability:.1f} < 7.0 検知 -> FP32 モデルをロード")
             else:
                 model_filename = "model.onnx"
-                print(f"[RuriV3RerankerLite] GPU Capability {capability:.1f} < 7.0 検知 (GTX 1080等) -> FP32 モデルをロード")
-        else:
-            model_filename = "model.onnx"
-            print("[RuriV3RerankerLite] CPU 実行または force_fp32=True -> FP32 モデルをロード")
+                print("[RuriV3RerankerLite] CPU 実行 (precision='auto') -> FP32 モデルをロード")
 
         # 2. FlatBuffers トークナイザー辞書ファイル名の決定
         fb_filename = "ruri_v3_reranker_310m.spm.fb"

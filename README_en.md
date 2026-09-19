@@ -144,9 +144,15 @@ Detailed Benchmark Report: [docs/reranker_benchmark.md](docs/reranker_benchmark.
 from ruri_v3_reranker_lite import RuriV3RerankerLite
 
 # Load model (automatically cached from Hugging Face Hub)
+# Precision options:
+# - "int8_full": 301 MB ultra-compact (fastest on CPU, 1/4 size, 100% rank preservation) ⚡ [Recommended]
+# - "int8": 526 MB linear-only quantized
+# - "fp16": 601 MB GPU-optimized (Turing/Ampere+)
+# - "fp32": 1,202 MB baseline full precision
 reranker = RuriV3RerankerLite(
     repo_id="Chottokun/ruri-v3-reranker-310m-lite",
-    device="auto"  # Loads FP16 on GPU (Compute Capability >= 7.0), FP32 on CPU
+    precision="int8_full",  # 301 MB ultra-compact model
+    device="cpu"
 )
 
 query = "日本の首都はどこですか？"
@@ -165,7 +171,7 @@ for rank, item in enumerate(results, start=1):
     print(f"Rank {rank}: Score={item['score']:.4f} (Index {item['index']}) -> {item['document']}")
 
 # Output:
-# Rank 1: Score=1.0000 (Index 0) -> 日本の首都は東京都です。政治・経済の中枢が集約されています。
+# Rank 1: Score=0.9990 (Index 0) -> 日本の首都は東京都です。政治・経済の中枢が集約されています。
 # Rank 2: Score=0.5633 (Index 1) -> 東京は日本の政治と文化の中心都市であり、多くの観光客が訪れます。
 # Rank 3: Score=0.0093 (Index 2) -> 大阪は関西地方の主要都市で、独自の食文化やお笑いで知られています。
 ```

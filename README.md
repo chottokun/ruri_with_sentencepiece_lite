@@ -143,9 +143,15 @@ print(f"クエリ vs 大阪: {similarities[1]:.4f}")
 from ruri_v3_reranker_lite import RuriV3RerankerLite
 
 # モデルのロード (Hugging Face Hub から自動キャッシュ)
+# 精度・サイズオプション:
+# - "int8_full": 301 MB 極小限界モデル (CPU 最速・1/4サイズ・順位完全維持) ⚡ [おすすめ]
+# - "int8": 526 MB 線形層動的量子化モデル
+# - "fp16": 601 MB Tensor Core GPU 最適化モデル
+# - "fp32": 1,202 MB 標準フル精度モデル
 reranker = RuriV3RerankerLite(
     repo_id="Chottokun/ruri-v3-reranker-310m-lite",
-    device="auto"  # GPU があれば FP16、CPUなら FP32 を自動選択
+    precision="int8_full",  # 301MB 極小モデルを指定
+    device="cpu"
 )
 
 query = "日本の首都はどこですか？"
@@ -164,7 +170,7 @@ for rank, item in enumerate(results, start=1):
     print(f"Rank {rank}: Score={item['score']:.4f} (Index {item['index']}) -> {item['document']}")
 
 # 出力例:
-# Rank 1: Score=1.0000 (Index 0) -> 日本の首都は東京都です。政治・経済の中枢が集約されています。
+# Rank 1: Score=0.9990 (Index 0) -> 日本の首都は東京都です。政治・経済の中枢が集約されています。
 # Rank 2: Score=0.5633 (Index 1) -> 東京は日本の政治と文化の中心都市であり、多くの観光客が訪れます。
 # Rank 3: Score=0.0093 (Index 2) -> 大阪は関西地方の主要都市で、独自の食文化やお笑いで知られています。
 ```
