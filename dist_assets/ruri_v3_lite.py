@@ -42,7 +42,8 @@ class RuriV3Lite:
         self,
         repo_id: str = "Chottokun/ruri-v3-30m-lite",
         model_dir: str = None,
-        force_fp32: bool = False
+        force_fp32: bool = False,
+        device: str = "auto"  # "auto", "cuda", "cpu"
     ):
         """
         初期化:
@@ -50,10 +51,10 @@ class RuriV3Lite:
         未指定の場合は Hugging Face Hub (repo_id) からダウンロード・キャッシュします。
         """
         available_providers = ort.get_available_providers()
-        use_cuda = "CUDAExecutionProvider" in available_providers
+        want_cuda = (device == "cuda") or (device == "auto" and "CUDAExecutionProvider" in available_providers)
 
         # 1. ハードウェア世代に応じたモデル判定
-        if use_cuda and not force_fp32:
+        if want_cuda and not force_fp32:
             capability = get_cuda_compute_capability()
             # Turing (7.5) / Ampere (8.6: RTX 3060) 以降は FP16
             # Pascal (6.1: GTX 1080) 等は 7.0 未満のため FP32
@@ -68,7 +69,6 @@ class RuriV3Lite:
             print("[RuriV3Lite] CPU 実行または force_fp32=True -> FP32 モデルをロード")
 
         # 2. モデル & トークナイザーの取得
-        # repo_id からサイズ名 (例: 70m, 130m, 310m) を推定、デフォルトは 30m
         model_size = "30m"
         for s in ["310m", "130m", "70m", "30m"]:
             if s in repo_id.lower():
@@ -81,7 +81,6 @@ class RuriV3Lite:
             model_path = os.path.join(model_dir, model_filename)
             fb_path = os.path.join(model_dir, fb_filename)
             if not os.path.exists(fb_path):
-                # 汎用 .spm.fb 探索
                 fbs = [f for f in os.listdir(model_dir) if f.endswith(".spm.fb")]
                 if fbs:
                     fb_path = os.path.join(model_dir, fbs[0])
@@ -95,23 +94,31 @@ class RuriV3Lite:
         # 3. SentencePiece Lite トークナイザーの初期化 (FlatBuffers, SBP並列対応)
         self.tokenizer = spl.FastSBPTokenizer(fb_path)
 
-        # 4. ONNX Runtime セッション初期化
-        if use_cuda:
+        # 4. ONNX Runtime セッション初期化 (CUDA 失敗時は自動的に CPU へフォールバック)
+        sess_options = ort.SessionOptions()
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+        if want_cuda:
             providers = [
                 ("CUDAExecutionProvider", {
                     "device_id": 0,
                     "arena_extend_strategy": "kNextPowerOfTwo",
-                    "cudnn_conv_algo_search": "EXHAUSTIVE",
+                    "cudnn_conv_algo_search": "DEFAULT",
                     "do_copy_in_default_stream": True,
                 }),
                 "CPUExecutionProvider"
             ]
+            try:
+                self.session = ort.InferenceSession(model_path, sess_options, providers=providers)
+                # 実際に CUDA が選ばれたか確認
+                active_provider = self.session.get_providers()[0]
+                print(f"[RuriV3Lite] InferenceSession 初期化完了 (プロバイダ: {active_provider})")
+            except Exception as e:
+                print(f"[RuriV3Lite] CUDA 初期化失敗 ({e}) -> CPUExecutionProvider にフォールバックします")
+                self.session = ort.InferenceSession(model_path, sess_options, providers=["CPUExecutionProvider"])
         else:
-            providers = ["CPUExecutionProvider"]
-
-        sess_options = ort.SessionOptions()
-        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        self.session = ort.InferenceSession(model_path, sess_options, providers=providers)
+            self.session = ort.InferenceSession(model_path, sess_options, providers=["CPUExecutionProvider"])
+            print("[RuriV3Lite] InferenceSession 初期化完了 (プロバイダ: CPUExecutionProvider)")
 
     def encode(
         self,

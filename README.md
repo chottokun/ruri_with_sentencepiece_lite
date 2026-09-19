@@ -29,6 +29,8 @@
 ruri_sentencepiece_lite/
 ├── AGENTS.md                  # 厳格な制約事項・セキュリティ方針 (uv利用・秘密情報保護)
 ├── .gitignore                 # 巨大モデル重み・秘密情報・キャッシュの完全除外設定
+├── docs/
+│   └── benchmark.md           # 性能評価・トークナイザー＆推論ベンチマークレポート
 ├── dist_assets/               # 配布用資産 (Hugging Face にアップロードされる成果物)
 │   ├── README.md              # Hugging Face モデルカード用ドキュメント
 │   ├── ruri_v3_lite.py        # 超軽量推論ラッパーモジュール (PyTorch非依存)
@@ -39,14 +41,25 @@ ruri_sentencepiece_lite/
 │   ├── model_fp16.onnx        # FP16 ONNX モデル (RTX 3060 / A100等, 71MB)
 │   └── wheels/                # 事前ビルド済み sentencepiece_lite wheel
 │       └── sentencepiece_lite-0.1.0-cp311-cp311-linux_x86_64.whl
-├── plan/
-│   └── ruri_with_sentencepiece_lite.md # 改訂完全実装計画書
 └── scripts/
     ├── verify_tokenizer.py    # Phase 0: 特殊トークン ID & プレフィックス検証
     ├── build_and_export.py    # Phase 1: Wheel ビルド・FlatBuffers 変換・ONNX エクスポート
     ├── deploy_to_hf.py        # Phase 3: Hugging Face への安全な自動デプロイ
-    └── test_inference.py      # Phase 5: PyTorch公式出力との数学的等価性検証
+    ├── test_inference.py      # Phase 5: PyTorch公式出力との数学的等価性検証
+    └── benchmark.py           # 推論速度・スループット測定スクリプト
 ```
+
+---
+
+## ⚡ ベンチマーク要約 (SentencePiece Lite vs Hugging Face)
+
+詳細レポート: [docs/benchmark.md](docs/benchmark.md)
+
+| 項目 | Hugging Face Fast Tokenizer | SentencePiece Lite (本実装) | 性能差 |
+|---|---|---|---|
+| **10,000件処理時間** | 455.03 ms | **33.97 ms** | **約 13.4 倍 高速** ⚡ |
+| **スループット** | 21,976 sent/s | **294,395 sent/s** | **毎秒約30万文** |
+| **1件あたり平均レイテンシ** | 45.5 µs | **3.40 µs** | **極小オーバーヘッド** |
 
 ---
 
