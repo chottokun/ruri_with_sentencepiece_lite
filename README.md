@@ -11,6 +11,9 @@
 - **130m (512次元)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
 - **310m (768次元)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
 
+**ナビゲーション**: [特徴](#-特徴と解決する課題) | [ベンチマーク](#-ベンチマーク要約-sentencepiece-lite--ort-vs-pytorch) | [利用方法](#-利用方法エンドユーザー環境) | [開発手順](#️-開発検証ビルド手順開発者向け) | [ライセンス・帰属表示・引用](#️-ライセンス帰属表示引用-license--attribution)
+
+
 ---
 
 ## 💡 特徴と解決する課題
@@ -185,14 +188,17 @@ uv run python scripts/deploy_to_hf.py --model 130m
   - 公式 SentencePiece 辞書を SentencePiece Lite 用 FlatBuffers バイナリ (`.spm.fb`) に変換
   - PyTorch / Transformers を一切使用しない高速推論ラッパー (`ruri_v3_lite.py`) の新規実装
 
-### 2. トークナイザーコア (Tokenizer)
-- **ライブラリ**: [SentencePiece (Lite)](https://github.com/google/sentencepiece/tree/master/src/builtin_pb)
-- **開発元**: Google LLC
+### 2. トークナイザーコア (SentencePiece Lite)
+- **ライブラリ**: [Google SentencePiece Lite](https://google.github.io/sentencepiece/lite/)
+- **リポジトリ**: [github.com/google/sentencepiece](https://github.com/google/sentencepiece)
+- **権利表記**: Copyright 2018 Google LLC
 - **ライセンス**: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- **特徴**: C++20 で実装された極小・超高速なサブワードトークナイザー。Safe Boundary Pre-tokenization (SBP) によるマルチスレッド並列処理と FlatBuffers によるゼロコピー mmap 辞書読み込みに対応。
 
-### 3. 原著論文の引用 (Citation)
-Ruri-v3 または本派生成果物をご利用の際は、以下の原著論文の引用をお願いいたします：
+### 3. 原著論文の引用 (Citations)
+本リポジトリおよびモデルをご利用の際は、以下の原著論文の引用をお願いいたします：
 
+#### Ruri (埋め込みモデル)
 ```bibtex
 @misc{Ruri,
   title={{Ruri: Japanese General Text Embeddings}}, 
@@ -204,4 +210,21 @@ Ruri-v3 または本派生成果物をご利用の際は、以下の原著論文
   url={https://arxiv.org/abs/2409.07737}, 
 }
 ```
+
+#### SentencePiece (トークナイザー)
+```bibtex
+@inproceedings{kudo-richardson-2018-sentencepiece,
+  title = "{S}entence{P}iece: A simple and language independent subword tokenizer and detokenizer for {N}eural {T}ext {P}rocessing",
+  author = "Kudo, Taku and Richardson, John",
+  booktitle = "Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations",
+  month = nov,
+  year = "2018",
+  address = "Brussels, Belgium",
+  publisher = "Association for Computational Linguistics",
+  url = "https://aclanthology.org/D18-2012",
+  doi = "10.18653/v1/D18-2012",
+  pages = "66--71",
+}
+```
+
 

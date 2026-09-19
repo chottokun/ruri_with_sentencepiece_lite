@@ -11,6 +11,9 @@ An ultra-lightweight, zero-torch Japanese embedding inference environment powere
   - **130m (512-dim)**: [`Chottokun/ruri-v3-130m-lite`](https://huggingface.co/Chottokun/ruri-v3-130m-lite)
   - **310m (768-dim)**: [`Chottokun/ruri-v3-310m-lite`](https://huggingface.co/Chottokun/ruri-v3-310m-lite)
 
+**Quick Links**: [Key Features](#-key-features--solved-challenges) | [Benchmark](#-benchmark-highlights-sentencepiece-lite--ort-vs-pytorch) | [Getting Started](#-getting-started-end-user-environment) | [Development](#️-development--reproduction-workflow) | [License & Citations](#️-license--attribution)
+
+
 ---
 
 ## 💡 Key Features & Solved Challenges
@@ -185,14 +188,17 @@ This repository and its derivative assets are provided under the **Apache Licens
   - Converted official SentencePiece models into FlatBuffers binaries (`.spm.fb`) for zero-copy memory mapping.
   - Authored a self-contained, PyTorch-free inference wrapper (`ruri_v3_lite.py`).
 
-### 2. Tokenizer Core
-- **Library**: [SentencePiece (Lite)](https://github.com/google/sentencepiece/tree/master/src/builtin_pb)
-- **Developer**: Google LLC
+### 2. Tokenizer Core (SentencePiece Lite)
+- **Library**: [Google SentencePiece Lite](https://google.github.io/sentencepiece/lite/)
+- **Repository**: [github.com/google/sentencepiece](https://github.com/google/sentencepiece)
+- **Copyright**: Copyright 2018 Google LLC
 - **License**: [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- **Features**: Ultra-fast C++20 subword tokenizer with Safe Boundary Pre-tokenization (SBP) for multi-threaded parallel execution and FlatBuffers serialization.
 
-### 3. Citation
-When using or evaluating Ruri-v3 or these derivative models, please cite the original paper:
+### 3. Citations
+When using or evaluating Ruri-v3 or these derivative models, please cite the corresponding original papers:
 
+#### Ruri (Embedding Model)
 ```bibtex
 @misc{Ruri,
   title={{Ruri: Japanese General Text Embeddings}}, 
@@ -204,4 +210,21 @@ When using or evaluating Ruri-v3 or these derivative models, please cite the ori
   url={https://arxiv.org/abs/2409.07737}, 
 }
 ```
+
+#### SentencePiece (Tokenizer)
+```bibtex
+@inproceedings{kudo-richardson-2018-sentencepiece,
+  title = "{S}entence{P}iece: A simple and language independent subword tokenizer and detokenizer for {N}eural {T}ext {P}rocessing",
+  author = "Kudo, Taku and Richardson, John",
+  booktitle = "Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations",
+  month = nov,
+  year = "2018",
+  address = "Brussels, Belgium",
+  publisher = "Association for Computational Linguistics",
+  url = "https://aclanthology.org/D18-2012",
+  doi = "10.18653/v1/D18-2012",
+  pages = "66--71",
+}
+```
+
 
