@@ -1,0 +1,64 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run CI Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache Hugging Face Hub downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-cache-${{ runner.os }}-${{ hashFiles('**/dist_assets/*.py', 'scripts/*.py') }}
+          restore-keys: |
+            hf-cache-${{ runner.os }}-
+
+      - name: Python Syntax Verification
+        run: |
+          uv run python -m py_compile dist_assets/*.py scripts/*.py
+
+      - name: Install Runtime Dependencies
+        run: |
+          uv venv --python ${{ matrix.python-version }} .venv
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          uv pip install "https://huggingface.co/Chottokun/ruri-v3-30m-lite/resolve/main/wheels/sentencepiece_lite-0.1.0-cp311-cp311-linux_x86_64.whl" onnxruntime numpy huggingface_hub
+
+      - name: Run Lightweight Embedding Inference Test
+        run: |
+          python -c "from dist_assets.ruri_v3_lite import RuriV3Lite; m = RuriV3Lite(repo_id='Chottokun/ruri-v3-30m-lite'); emb = m.encode(['CI test query']); print('Shape:', emb.shape); assert emb.shape == (1, 256)"
+
+      - name: Run Lightweight Reranker Download & Inference Test
+        run: |
+          python scripts/test_reranker_hf_download.py
+
+      - name: Run Reranker Robustness Test Suite
+        run: |
+          python scripts/test_reranker_robustness.py
