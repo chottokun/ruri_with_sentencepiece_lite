@@ -183,6 +183,71 @@ for rank, item in enumerate(results, start=1):
 
 ---
 
+## LLMライブラリ連携 (LangChain / LlamaIndex)
+
+`RuriV3Lite` および `RuriV3RerankerLite` は LangChain や LlamaIndex などの標準インターフェースをダックタイピングでサポートしており、追加の標準アダプターなしでそのまま各種 VectorStore や Retriever に組み込むことができます。
+
+### 1. LangChain での埋め込み (VectorStore / FAISS)
+
+```python
+from ruri_v3_lite import RuriV3Lite
+from langchain_community.vectorstores import FAISS
+
+# RuriV3Lite は LangChain Embeddings プロトコル (embed_documents, embed_query) を実装
+# 自動的に "検索クエリ: " および "文章: " のプレフィックスを付与します
+embeddings = RuriV3Lite(repo_id="Chottokun/ruri-v3-30m-lite")
+
+texts = [
+    "日本の首都は東京都です。",
+    "大阪は関西地方の主要都市です。"
+]
+
+# ベクトルデータベースの作成
+db = FAISS.from_texts(texts, embeddings)
+
+# 類似検索
+docs = db.similarity_search("日本の首都はどこですか？", k=1)
+print(docs[0].page_content)
+```
+
+### 2. LlamaIndex での埋め込み (VectorStoreIndex)
+
+```python
+from ruri_v3_lite import RuriV3Lite
+from llama_index.core import VectorStoreIndex, Document
+
+# RuriV3Lite は LlamaIndex BaseEmbedding プロトコル (get_text_embedding, get_query_embedding) を実装
+embed_model = RuriV3Lite(repo_id="Chottokun/ruri-v3-30m-lite")
+
+documents = [
+    Document(text="日本の首都は東京都です。"),
+    Document(text="大阪は関西地方の主要都市です。")
+]
+
+index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
+query_engine = index.as_query_engine()
+```
+
+### 3. LangChain でのリランカー (ContextualCompressionRetriever)
+
+```python
+from ruri_v3_reranker_lite import RuriV3RerankerLite
+from langchain.retrievers import ContextualCompressionRetriever
+
+# RuriV3RerankerLite は LangChain BaseDocumentCompressor プロトコル (compress_documents) を実装
+reranker = RuriV3RerankerLite(precision="int8_full")
+
+# 既存のレトリバーと組み合わせた 2 段階検索 pipeline
+compression_retriever = ContextualCompressionRetriever(
+    base_compressor=reranker,
+    base_retriever=db.as_retriever(search_kwargs={"k": 10})
+)
+
+# 精密リランキングされたドキュメントを取得
+compressed_docs = compression_retriever.invoke("日本の首都はどこですか？")
+
+---
+
 ## 開発・検証・ビルド手順（開発者向け）
 
 本リポジトリでの環境構築・操作は `uv` を使用します。

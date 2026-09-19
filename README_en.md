@@ -183,6 +183,71 @@ for rank, item in enumerate(results, start=1):
 
 ---
 
+## LLM Framework Integrations (LangChain / LlamaIndex)
+
+`RuriV3Lite` and `RuriV3RerankerLite` natively support duck-typing for standard LLM framework protocols, allowing direct usage in LangChain and LlamaIndex without extra dependencies or adapter wrappers.
+
+### 1. LangChain Embeddings (VectorStores / FAISS)
+
+```python
+from ruri_v3_lite import RuriV3Lite
+from langchain_community.vectorstores import FAISS
+
+# RuriV3Lite implements the LangChain Embeddings protocol (embed_documents, embed_query)
+# Automatically prepends default task prefixes ("検索クエリ: " / "文章: ")
+embeddings = RuriV3Lite(repo_id="Chottokun/ruri-v3-30m-lite")
+
+texts = [
+    "日本の首都は東京都です。",
+    "大阪は関西地方の主要都市です。"
+]
+
+# Create FAISS vector store
+db = FAISS.from_texts(texts, embeddings)
+
+# Similarity search
+docs = db.similarity_search("日本の首都はどこですか？", k=1)
+print(docs[0].page_content)
+```
+
+### 2. LlamaIndex Embeddings (VectorStoreIndex)
+
+```python
+from ruri_v3_lite import RuriV3Lite
+from llama_index.core import VectorStoreIndex, Document
+
+# RuriV3Lite implements the LlamaIndex BaseEmbedding protocol (get_text_embedding, get_query_embedding)
+embed_model = RuriV3Lite(repo_id="Chottokun/ruri-v3-30m-lite")
+
+documents = [
+    Document(text="日本の首都は東京都です。"),
+    Document(text="大阪は関西地方の主要都市です。")
+]
+
+index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
+query_engine = index.as_query_engine()
+```
+
+### 3. LangChain Reranker (ContextualCompressionRetriever)
+
+```python
+from ruri_v3_reranker_lite import RuriV3RerankerLite
+from langchain.retrievers import ContextualCompressionRetriever
+
+# RuriV3RerankerLite implements the LangChain BaseDocumentCompressor protocol (compress_documents)
+reranker = RuriV3RerankerLite(precision="int8_full")
+
+# Two-stage retrieval pipeline combining base retriever with cross-encoder reranker
+compression_retriever = ContextualCompressionRetriever(
+    base_compressor=reranker,
+    base_retriever=db.as_retriever(search_kwargs={"k": 10})
+)
+
+# Retrieve high-precision reranked documents
+compressed_docs = compression_retriever.invoke("日本の首都はどこですか？")
+
+---
+
 ## Development and Build Workflow
 
 All tasks within this repository are managed using `uv`.

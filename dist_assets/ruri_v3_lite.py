@@ -43,13 +43,25 @@ class RuriV3Lite:
         repo_id: str = "Chottokun/ruri-v3-30m-lite",
         model_dir: str = None,
         force_fp32: bool = False,
-        device: str = "auto"  # "auto", "cuda", "cpu"
+        device: str = "auto",  # "auto", "cuda", "cpu"
+        query_prefix: str = "検索クエリ: ",
+        document_prefix: str = "文章: "
     ):
         """
         初期化:
         model_dir が指定されている場合はローカルパスから読み込み、
         未指定の場合は Hugging Face Hub (repo_id) からダウンロード・キャッシュします。
+
+        Args:
+            repo_id: Hugging Face リポジトリID
+            model_dir: ローカルモデル保存ディレクトリ
+            force_fp32: True の場合強制的に FP32
+            device: "auto", "cuda", "cpu"
+            query_prefix: LangChain / LlamaIndex の embed_query 等で自動付与する接頭辞
+            document_prefix: LangChain / LlamaIndex の embed_documents 等で自動付与する接頭辞
         """
+        self.query_prefix = query_prefix
+        self.document_prefix = document_prefix
         available_providers = ort.get_available_providers()
         want_cuda = (device == "cuda") or (device == "auto" and "CUDAExecutionProvider" in available_providers)
 
@@ -191,3 +203,40 @@ class RuriV3Lite:
             all_embeddings.append(mean_pooled)
 
         return np.vstack(all_embeddings)
+
+    # =========================================================================
+    # LangChain / LlamaIndex 互換インターフェース (Embeddings Protocol)
+    # =========================================================================
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """
+        LangChain Embeddings 互換メソッド: ドキュメントのリストを埋め込みベクトルに変換します。
+        自動的に `document_prefix` (デフォルト: "文章: ") を付与します。
+        """
+        prefixed_texts = [
+            f"{self.document_prefix}{text}" if self.document_prefix and not text.startswith(self.document_prefix) else text
+            for text in texts
+        ]
+        embeddings = self.encode(prefixed_texts)
+        return embeddings.tolist()
+
+    def embed_query(self, text: str) -> List[float]:
+        """
+        LangChain Embeddings 互換メソッド: 単一の検索クエリを埋め込みベクトルに変換します。
+        自動的に `query_prefix` (デフォルト: "検索クエリ: ") を付与します。
+        """
+        prefixed_text = f"{self.query_prefix}{text}" if self.query_prefix and not text.startswith(self.query_prefix) else text
+        embedding = self.encode([prefixed_text])[0]
+        return embedding.tolist()
+
+    def get_text_embedding(self, text: str) -> List[float]:
+        """LlamaIndex BaseEmbedding 互換メソッド (ドキュメント単体用)"""
+        return self.embed_documents([text])[0]
+
+    def get_query_embedding(self, query: str) -> List[float]:
+        """LlamaIndex BaseEmbedding 互換メソッド (クエリ用)"""
+        return self.embed_query(query)
+
+    def get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """LlamaIndex BaseEmbedding 互換メソッド (ドキュメント複数用)"""
+        return self.embed_documents(texts)
