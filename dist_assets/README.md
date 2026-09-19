@@ -80,32 +80,40 @@ print(f"Query vs Osaka: {similarities[1]:.4f}")
 
 ---
 
-## ⚖️ License, Attribution & Citations
+## ⚖️ License & Redistribution Terms (Apache License, Version 2.0)
 
-This model repository and its derivative assets are distributed under the **Apache License, Version 2.0**, in strict accordance with the upstream open-source licenses.
+This model repository, converted binaries, and wrapper scripts are distributed under the **Apache License, Version 2.0** (the "License"). You may not use these files except in compliance with the License. You may obtain a copy of the License at:
 
-### 1. Base Model Credits
-- **Model**: [cl-nagoya/ruri-v3-30m](https://huggingface.co/cl-nagoya/ruri-v3-30m)
-- **Developer**: Nagoya University Natural Language Processing Laboratory (cl-nagoya)
-- **Authors**: Hayato Tsukagoshi, Ryohei Sasano
-- **License**: [**Apache License 2.0**](https://www.apache.org/licenses/LICENSE-2.0)
-- **Notice of Modification**:
-  - Exported official PyTorch Safetensors weights into ONNX (FP32) and Tensor Core-optimized ONNX (FP16).
-  - Converted official SentencePiece models into FlatBuffers format (`.spm.fb`) for zero-copy memory mapping.
-  - Authored a PyTorch-independent inference module (`ruri_v3_lite.py`).
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
-### 2. Tokenizer Core (SentencePiece Lite)
-- **Project**: [Google SentencePiece Lite](https://google.github.io/sentencepiece/lite/)
-- **Repository**: [github.com/google/sentencepiece](https://github.com/google/sentencepiece)
-- **Copyright**: Copyright 2018 Google LLC
-- **License**: [**Apache License 2.0**](https://www.apache.org/licenses/LICENSE-2.0)
-- **Description**: Google's lightweight C++20 subword tokenizer featuring Safe Boundary Pre-tokenization (SBP) for multi-threaded parallel execution and FlatBuffers serialization.
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+
+### Upstream Components & Notices of Modification (Section 4)
+
+In compliance with Section 4 of the Apache License 2.0:
+
+1. **Base Embedding Model**:
+   - **Model**: [cl-nagoya/ruri-v3-30m](https://huggingface.co/cl-nagoya/ruri-v3-30m)
+   - **Copyright**: Copyright 2024 Hayato Tsukagoshi and Ryohei Sasano (Nagoya University NLP Laboratory)
+   - **License**: [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+   - **Prominent Notice of Modification (Section 4b)**:
+     - Converted original PyTorch Safetensors weights into ONNX (FP32) and FP16 formats.
+     - Converted official SentencePiece model into FlatBuffers serialization format (`.spm.fb`).
+     - Added independent inference implementation (`ruri_v3_lite.py`) decoupling from PyTorch and Transformers.
+
+2. **Tokenizer Engine**:
+   - **Library**: [Google SentencePiece Lite](https://google.github.io/sentencepiece/lite/)
+   - **Repository**: [github.com/google/sentencepiece](https://github.com/google/sentencepiece)
+   - **Copyright**: Copyright 2018 Google LLC
+   - **License**: [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+   - **Prominent Notice of Modification (Section 4b)**:
+     - Built and packaged as a standalone C++20 Python wheel with Safe Boundary Pre-tokenization (SBP) support.
 
 ---
 
-### 3. Citations
+### 📚 Citations
 
-If you use or evaluate this model or tokenizer in your research or applications, please cite the corresponding original papers:
+When utilizing or evaluating this model or tokenizer, please cite the corresponding works:
 
 #### Ruri (Embedding Model)
 ```bibtex
@@ -138,5 +146,5 @@ If you use or evaluate this model or tokenizer in your research or applications,
 
 ---
 
-## 📄 License
-This repository and all included assets are distributed under the [Apache License 2.0](LICENSE).
+## 📄 License File
+A full copy of the license is included in [LICENSE](LICENSE).

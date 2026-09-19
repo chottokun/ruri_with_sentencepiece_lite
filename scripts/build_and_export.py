@@ -200,22 +200,36 @@ print(f"クエリ vs 大阪: {{similarities[1]:.4f}}")
 
 ---
 
-## ⚖️ ライセンス・クレジット・引用 (License & Attribution)
+## ⚖️ License & Redistribution Terms (Apache License, Version 2.0)
 
-本リポジトリおよび変換済み配布モデルは **Apache License 2.0** の下で公開されています。
+This model repository, converted binaries, and wrapper scripts are distributed under the **Apache License, Version 2.0** (the "License"). You may not use these files except in compliance with the License. You may obtain a copy of the License at:
 
-### 原著作者情報 (Base Model Credits)
-- **Base Model**: [{repo_id}](https://huggingface.co/{repo_id})
-- **開発元**: 名古屋大学 自然言語処理研究室 (Nagoya University, cl-nagoya)
-- **原著作者**: 塚越 隼人 (Hayato Tsukagoshi), 笹野 遼平 (Ryohei Sasano)
-- **ライセンス**: Apache License 2.0
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
-### 改変内容 (Modifications)
-- 公式 Safetensors 重みを ONNX (FP32) および ONNX (FP16) 形式へ変換
-- 公式 SentencePiece 辞書を SentencePiece Lite 用 FlatBuffers バイナリ (`.spm.fb`) に変換
-- PyTorch 非依存・超軽量推論ラッパー (`ruri_v3_lite.py`) の同梱
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-### 引用 (Citation)
+### Upstream Components & Notices of Modification (Section 4)
+
+1. **Base Embedding Model**:
+   - **Model**: [{repo_id}](https://huggingface.co/{repo_id})
+   - **Copyright**: Copyright 2024 Hayato Tsukagoshi and Ryohei Sasano (Nagoya University NLP Laboratory)
+   - **License**: [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+   - **Prominent Notice of Modification (Section 4b)**:
+     - Converted original PyTorch Safetensors weights into ONNX (FP32) and FP16 formats.
+     - Converted official SentencePiece model into FlatBuffers serialization format (`.spm.fb`).
+     - Added independent inference implementation (`ruri_v3_lite.py`) decoupling from PyTorch and Transformers.
+
+2. **Tokenizer Engine**:
+   - **Library**: [Google SentencePiece Lite](https://google.github.io/sentencepiece/lite/)
+   - **Repository**: [github.com/google/sentencepiece](https://github.com/google/sentencepiece)
+   - **Copyright**: Copyright 2018 Google LLC
+   - **License**: [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+   - **Prominent Notice of Modification (Section 4b)**:
+     - Built and packaged as a standalone C++20 Python wheel with Safe Boundary Pre-tokenization (SBP) support.
+
+### 📚 Citations
+
+#### Ruri (Embedding Model)
 ```bibtex
 @misc{{Ruri,
   title={{Ruri: Japanese General Text Embeddings}}, 
@@ -227,9 +241,31 @@ print(f"クエリ vs 大阪: {{similarities[1]:.4f}}")
   url={{https://arxiv.org/abs/2409.07737}}, 
 }}
 ```
+
+#### SentencePiece (Tokenizer)
+```bibtex
+@inproceedings{{kudo-richardson-2018-sentencepiece,
+  title = "{{S}}entence{{P}}iece: A simple and language independent subword tokenizer and detokenizer for {{N}}eural {{T}}ext {{P}}rocessing",
+  author = "Kudo, Taku and Richardson, John",
+  booktitle = "Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing: System Demonstrations",
+  month = nov,
+  year = "2018",
+  address = "Brussels, Belgium",
+  publisher = "Association for Computational Linguistics",
+  url = "https://aclanthology.org/D18-2012",
+  doi = "10.18653/v1/D18-2012",
+  pages = "66--71",
+}}
+```
+
+---
+
+## 📄 License File
+A full copy of the license is included in [LICENSE](LICENSE).
 """
     with open(os.path.join(out_dir, "README.md"), "w", encoding="utf-8") as f:
         f.write(readme_content)
+
 
     print(f"✨ {repo_id} ({model_key}) の資産生成が完了しました: {out_dir}")
 

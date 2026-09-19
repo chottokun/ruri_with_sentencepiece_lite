@@ -174,9 +174,14 @@ uv run python scripts/deploy_to_hf.py --model 130m
 
 ---
 
-## ⚖️ License & Attribution
+## ⚖️ License & Redistribution Terms (Apache License, Version 2.0)
 
-This repository and its derivative assets are provided under the **Apache License 2.0** (see [LICENSE](LICENSE) for details).
+This project, converted model binaries, and distribution assets are licensed under the **Apache License, Version 2.0** (the "License"). You may not use these files except in compliance with the License. You may obtain a copy of the License at:
+
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License. A complete copy of the license is included in [LICENSE](LICENSE).
+
 
 ### 1. Base Model Credits
 - **Model**: [`cl-nagoya/ruri-v3`](https://huggingface.co/collections/cl-nagoya/ruri-v3-67c006886e0621255e7fcb99) (`30m`, `70m`, `130m`, `310m`)
