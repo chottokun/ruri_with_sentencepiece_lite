@@ -313,3 +313,54 @@ class RuriV3RerankerLite:
             results.append(item)
 
         return results
+
+    # =========================================================================
+    # LangChain / LlamaIndex 互換インターフェース (BaseDocumentCompressor / Postprocessor)
+    # =========================================================================
+
+    def compress_documents(
+        self,
+        documents: List[Any],
+        query: str,
+        callbacks: Any = None
+    ) -> List[Any]:
+        """
+        LangChain BaseDocumentCompressor 互換メソッド:
+        LangChain の Document オブジェクトのリストをクエリとの関連度スコアでリランキングし、
+        `metadata["rerank_score"]` にスコアを設定してソートしたドキュメントリストを返します。
+
+        Args:
+            documents: LangChain Document オブジェクト (page_content 属性を持つオブジェクト) のリスト
+            query: 検索クエリ文字列
+            callbacks: LangChain コールバックハンドラ (互換性用引数)
+
+        Returns:
+            List[Any]: スコア降順に並び替えられ metadata に rerank_score が挿入された Document リスト
+        """
+        if not documents:
+            return []
+
+        # Document オブジェクトまたは文字列の抽出
+        doc_texts = [
+            doc.page_content if hasattr(doc, "page_content") else str(doc)
+            for doc in documents
+        ]
+
+        reranked = self.rerank(query, doc_texts, return_documents=False)
+
+        compressed_docs = []
+        for res in reranked:
+            idx = res["index"]
+            score = res["score"]
+            doc = documents[idx]
+
+            # Document オブジェクトの metadata を更新 (オブジェクトコピーを推奨)
+            if hasattr(doc, "page_content"):
+                # LangChain Document オブジェクトの場合
+                if hasattr(doc, "metadata") and isinstance(doc.metadata, dict):
+                    doc.metadata["rerank_score"] = score
+                compressed_docs.append(doc)
+            else:
+                compressed_docs.append(doc)
+
+        return compressed_docs
