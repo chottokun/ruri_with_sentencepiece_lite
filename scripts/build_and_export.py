@@ -102,6 +102,9 @@ def export_model(model_key: str, spm_to_fb_bin: str, wheel_path: str):
     # 2. FP32 ONNX エクスポート
     print(f"[{model_key}] 2/4: FP32 ONNX エクスポート")
     tokenizer = AutoTokenizer.from_pretrained(repo_id)
+    tokenizer.save_pretrained(out_dir)
+    if model_key == "30m":
+        tokenizer.save_pretrained(BASE_DIST_DIR)
     model = AutoModel.from_pretrained(repo_id)
     model.eval()
 

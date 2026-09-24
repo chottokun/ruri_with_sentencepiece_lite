@@ -26,6 +26,7 @@ def main():
     # 1. モデルとトークナイザーのロード
     print("[1/5] モデルおよびトークナイザーのロード中...")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    tokenizer.save_pretrained(OUT_DIR)
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID).eval()
 
     # 2. FP32 ONNX エクスポート

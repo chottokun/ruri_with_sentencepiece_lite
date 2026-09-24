@@ -22,6 +22,7 @@
 
 ## File Structure & Roles
 - `scripts/verify_tokenizer.py`: Phase 0 verification to confirm BOS/EOS token IDs, special tokens, and pooling behavior.
+- `scripts/export_tokenizer_json.py`: Export HF Fast Tokenizer format (tokenizer.json, tokenizer_config.json) with verified special tokens.
 - `scripts/build_and_export.py`: Build `.whl` from source, export FP32 ONNX, and convert to FP16. (PyTorch/Transformers allowed here).
 - `scripts/deploy_to_hf.py`: Upload `dist_assets/` to target Hugging Face model repo.
 - `scripts/test_inference.py`: Verification script executing `dist_assets/ruri_v3_lite.py` under various text inputs.
@@ -41,6 +42,11 @@ uv venv --python 3.11
 ### 2. Phase 0 Verification
 ```bash
 uv run --with "torch" --with "transformers" --with "sentencepiece" --with "huggingface_hub" python scripts/verify_tokenizer.py
+```
+
+### 2.5 Fast Tokenizer Export (tokenizer.json)
+```bash
+uv run --with "transformers" --with "sentencepiece" python scripts/export_tokenizer_json.py
 ```
 
 ### 3. Asset Build & Export

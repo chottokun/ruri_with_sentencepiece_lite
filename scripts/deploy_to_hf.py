@@ -43,7 +43,7 @@ def deploy_model(model_key: str, api: HfApi, username: str):
         if rel_root.startswith("ruri_v3_") or "__pycache__" in rel_root:
             continue
         for f in files:
-            if f.endswith(".pyc") or f == "model_fixed.onnx":
+            if f.endswith(".pyc") or f == "model_fixed.onnx" or f == "ruri_v3_reranker_lite.py":
                 continue
             full_path = os.path.join(root, f)
             rel_path = os.path.relpath(full_path, target_dir)
@@ -55,8 +55,8 @@ def deploy_model(model_key: str, api: HfApi, username: str):
         folder_path=target_dir,
         repo_id=repo_id,
         repo_type="model",
-        commit_message=f"feat: upload sentencepiece_lite zero-torch ruri-v3-{model_key} assets",
-        ignore_patterns=["ruri_v3_*/**", "__pycache__/**", "*.pyc", "model_fixed.onnx"]
+        commit_message=f"feat: add tokenizer.json (fast tokenizer) and update ruri-v3-{model_key} assets",
+        ignore_patterns=["ruri_v3_*/**", "__pycache__/**", "*.pyc", "model_fixed.onnx", "ruri_v3_reranker_lite.py"]
     )
     print(f"\n【デプロイ完了】{repo_id} のアップロードが完了しました！ 🎉")
     print(f"URL: https://huggingface.co/{repo_id}")
@@ -80,6 +80,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Hugging Face デプロイスクリプト")
     parser.add_argument("--model", choices=["30m", "70m", "130m", "310m"], default="70m", help="デプロイ対象モデル")
+    parser.add_argument("--all", action="store_true", help="30m, 70m, 130m, 310m の全モデルを一括デプロイ")
     args = parser.parse_args()
 
     hf_token = os.environ.get("HF_TOKEN") or get_token()
@@ -98,7 +99,11 @@ def main():
         user_info = api.whoami()
         username = user_info["name"]
 
-    deploy_model(args.model, api, username)
+    if args.all:
+        for m in ["30m", "70m", "130m", "310m"]:
+            deploy_model(m, api, username)
+    else:
+        deploy_model(args.model, api, username)
 
 if __name__ == "__main__":
     main()

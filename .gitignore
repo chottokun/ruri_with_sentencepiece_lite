@@ -65,6 +65,8 @@ dist_assets/*.onnx.data
 dist_assets/*.spm.fb
 dist_assets/wheels/*.whl
 dist_assets/tokenizer.model
+dist_assets/tokenizer.json
+dist_assets/tokenizer_config.json
 dist_assets/ruri_v3_*/
 build_spm/
 
